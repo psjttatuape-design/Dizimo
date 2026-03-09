@@ -150,12 +150,15 @@ const LoginPage = () => {
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center">
-                <Church className="w-8 h-8 text-primary-foreground" />
-              </div>
+              <img 
+                src="https://customer-assets.emergentagent.com/job_permission-manager-8/artifacts/hr97hygf_Logo%20PSJT.jpg" 
+                alt="Paróquia São Judas Tadeu" 
+                className="w-32 h-32 rounded-full object-cover shadow-lg border-4 border-red-600"
+              />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">Gestão de Dízimos</h1>
-            <p className="text-muted-foreground mt-2">Entre para acessar o sistema</p>
+            <h1 className="text-3xl font-bold tracking-tight text-red-800">Paróquia São Judas Tadeu</h1>
+            <p className="text-muted-foreground mt-1">Tatuapé - São Paulo</p>
+            <p className="text-lg font-medium text-amber-600 mt-3">Sistema de Gestão de Dízimos</p>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -242,12 +245,14 @@ const Sidebar = ({ isOpen, onClose }) => {
       <aside className={`sidebar ${!isOpen ? 'sidebar-collapsed lg:translate-x-0' : ''}`}>
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-primary-foreground/20 rounded-lg flex items-center justify-center">
-              <Church className="w-5 h-5" />
-            </div>
+            <img 
+              src="https://customer-assets.emergentagent.com/job_permission-manager-8/artifacts/hr97hygf_Logo%20PSJT.jpg" 
+              alt="PSJT" 
+              className="w-10 h-10 rounded-full object-cover border-2 border-amber-400"
+            />
             <div>
-              <h2 className="font-semibold">Dízimos</h2>
-              <p className="text-xs opacity-70">Sistema de Gestão</p>
+              <h2 className="font-semibold">São Judas Tadeu</h2>
+              <p className="text-xs opacity-70">Gestão de Dízimos</p>
             </div>
           </div>
           
@@ -893,7 +898,7 @@ const RelatoriosPage = () => {
                     <Tooltip content={<CustomTooltip />} />
                     <Bar 
                       dataKey="valor" 
-                      fill="hsl(215 25% 27%)" 
+                      fill="#b91c1c" 
                       radius={[4, 4, 0, 0]}
                       name="Arrecadado"
                     />

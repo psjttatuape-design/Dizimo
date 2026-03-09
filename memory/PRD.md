@@ -28,20 +28,22 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 - [x] Aba de configurações para gerenciar usuários e permissões
 
 ## What's Been Implemented (Jan 2026)
-- **Login Page**: Split-screen com imagem de vitral, formulário de login
+- **Login Page**: Split-screen com logo da Paróquia São Judas Tadeu, cores institucionais (vermelho, dourado, ciano)
 - **Dashboard**: Cards com estatísticas (total dizimistas, arrecadado, contribuições)
 - **Página Dizimistas**: CRUD completo com permissões
 - **Página Relatórios**: 
   - Resumo com cards (total dizimistas, arrecadado, contribuições)
-  - Gráfico de barras de contribuições mensais (últimos 12 meses)
+  - Gráfico de barras de contribuições mensais (últimos 12 meses) - cor vermelha institucional
   - Formulário para registrar valores totais de meses anteriores
   - Tabela de valores mensais registrados
   - Histórico de contribuições
 - **Aba Configurações**: 
   - Tab Usuários: Criar, editar, excluir usuários
   - Tab Permissões: Configurar permissões granulares por usuário
+- **Sidebar**: Gradiente vermelho com logo da paróquia, itens ativos em dourado
 - **Permissões**: dizimistas_view, dizimistas_edit, relatorios_view, relatorios_edit
 - **Credenciais padrão**: admin / admin123
+- **Logo**: https://customer-assets.emergentagent.com/job_permission-manager-8/artifacts/hr97hygf_Logo%20PSJT.jpg
 
 ## API Endpoints
 - POST /api/auth/login - Login
