@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +7,11 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional, Dict
 import uuid
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
+import jwt
+from passlib.context import CryptContext
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,54 +21,380 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# Security
+SECRET_KEY = os.environ.get('JWT_SECRET', 'igreja-dizimistas-secret-key-2024')
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 24
 
-# Create a router with the /api prefix
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
+
+app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# Models
+class UserPermissions(BaseModel):
+    dizimistas_view: bool = False
+    dizimistas_edit: bool = False
+    relatorios_view: bool = False
+    relatorios_edit: bool = False
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+class UserBase(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    username: str
+    name: str
+    role: str = "user"  # admin or user
+    permissions: UserPermissions = Field(default_factory=UserPermissions)
+    active: bool = True
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    name: str
+    role: str = "user"
+    permissions: Optional[UserPermissions] = None
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    permissions: Optional[UserPermissions] = None
+    active: Optional[bool] = None
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: dict
+
+class DizimistaBase(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    nome: str
+    telefone: str = ""
+    email: str = ""
+    endereco: str = ""
+    valor_dizimo: float = 0.0
+    data_cadastro: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    ativo: bool = True
+
+class DizimistaCreate(BaseModel):
+    nome: str
+    telefone: str = ""
+    email: str = ""
+    endereco: str = ""
+    valor_dizimo: float = 0.0
+
+class DizimistaUpdate(BaseModel):
+    nome: Optional[str] = None
+    telefone: Optional[str] = None
+    email: Optional[str] = None
+    endereco: Optional[str] = None
+    valor_dizimo: Optional[float] = None
+    ativo: Optional[bool] = None
+
+class ContribuicaoBase(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    dizimista_id: str
+    valor: float
+    data: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    observacao: str = ""
+
+class ContribuicaoCreate(BaseModel):
+    dizimista_id: str
+    valor: float
+    data: Optional[str] = None
+    observacao: str = ""
+
+# Helper functions
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Token inválido")
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+        if user is None:
+            raise HTTPException(status_code=401, detail="Usuário não encontrado")
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+def check_permission(user: dict, resource: str, action: str) -> bool:
+    if user.get("role") == "admin":
+        return True
+    permissions = user.get("permissions", {})
+    key = f"{resource}_{action}"
+    return permissions.get(key, False)
+
+# Initialize admin user
+@app.on_event("startup")
+async def startup_db():
+    admin = await db.users.find_one({"username": "admin"})
+    if not admin:
+        admin_user = {
+            "id": str(uuid.uuid4()),
+            "username": "admin",
+            "password": hash_password("admin123"),
+            "name": "Administrador",
+            "role": "admin",
+            "permissions": {
+                "dizimistas_view": True,
+                "dizimistas_edit": True,
+                "relatorios_view": True,
+                "relatorios_edit": True
+            },
+            "active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(admin_user)
+        logging.info("Admin user created: admin/admin123")
+
+# Auth Routes
+@api_router.post("/auth/login", response_model=TokenResponse)
+async def login(data: UserLogin):
+    user = await db.users.find_one({"username": data.username}, {"_id": 0})
+    if not user or not verify_password(data.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    if not user.get("active", True):
+        raise HTTPException(status_code=401, detail="Usuário desativado")
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    token = create_access_token({"sub": user["id"]})
+    user_data = {k: v for k, v in user.items() if k != "password"}
+    return TokenResponse(access_token=token, user=user_data)
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+@api_router.get("/auth/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    return current_user
 
-# Include the router in the main app
+# User Management Routes (Admin only)
+@api_router.get("/users")
+async def list_users(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
+    return users
+
+@api_router.post("/users")
+async def create_user(data: UserCreate, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    existing = await db.users.find_one({"username": data.username})
+    if existing:
+        raise HTTPException(status_code=400, detail="Usuário já existe")
+    
+    permissions = data.permissions.model_dump() if data.permissions else {
+        "dizimistas_view": False,
+        "dizimistas_edit": False,
+        "relatorios_view": False,
+        "relatorios_edit": False
+    }
+    
+    user = {
+        "id": str(uuid.uuid4()),
+        "username": data.username,
+        "password": hash_password(data.password),
+        "name": data.name,
+        "role": data.role,
+        "permissions": permissions,
+        "active": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(user)
+    user.pop("password", None)
+    user.pop("_id", None)
+    return user
+
+@api_router.put("/users/{user_id}")
+async def update_user(user_id: str, data: UserUpdate, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if "permissions" in update_data and update_data["permissions"]:
+        update_data["permissions"] = update_data["permissions"]
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Nenhum dado para atualizar")
+    
+    result = await db.users.update_one({"id": user_id}, {"$set": update_data})
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return user
+
+@api_router.delete("/users/{user_id}")
+async def delete_user(user_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    if user_id == current_user.get("id"):
+        raise HTTPException(status_code=400, detail="Não é possível excluir o próprio usuário")
+    
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return {"message": "Usuário excluído com sucesso"}
+
+@api_router.put("/users/{user_id}/permissions")
+async def update_user_permissions(user_id: str, permissions: UserPermissions, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"permissions": permissions.model_dump()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return user
+
+# Dizimistas Routes
+@api_router.get("/dizimistas")
+async def list_dizimistas(current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "view"):
+        raise HTTPException(status_code=403, detail="Sem permissão para visualizar dizimistas")
+    dizimistas = await db.dizimistas.find({}, {"_id": 0}).to_list(1000)
+    return dizimistas
+
+@api_router.post("/dizimistas")
+async def create_dizimista(data: DizimistaCreate, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para criar dizimistas")
+    
+    dizimista = DizimistaBase(**data.model_dump()).model_dump()
+    await db.dizimistas.insert_one(dizimista)
+    dizimista.pop("_id", None)
+    return dizimista
+
+@api_router.put("/dizimistas/{dizimista_id}")
+async def update_dizimista(dizimista_id: str, data: DizimistaUpdate, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para editar dizimistas")
+    
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Nenhum dado para atualizar")
+    
+    result = await db.dizimistas.update_one({"id": dizimista_id}, {"$set": update_data})
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Dizimista não encontrado")
+    
+    dizimista = await db.dizimistas.find_one({"id": dizimista_id}, {"_id": 0})
+    return dizimista
+
+@api_router.delete("/dizimistas/{dizimista_id}")
+async def delete_dizimista(dizimista_id: str, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para excluir dizimistas")
+    
+    result = await db.dizimistas.delete_one({"id": dizimista_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Dizimista não encontrado")
+    return {"message": "Dizimista excluído com sucesso"}
+
+# Contribuicoes Routes
+@api_router.get("/contribuicoes")
+async def list_contribuicoes(current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "view"):
+        raise HTTPException(status_code=403, detail="Sem permissão para visualizar contribuições")
+    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(1000)
+    return contribuicoes
+
+@api_router.post("/contribuicoes")
+async def create_contribuicao(data: ContribuicaoCreate, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para registrar contribuições")
+    
+    contribuicao_data = data.model_dump()
+    if not contribuicao_data.get("data"):
+        contribuicao_data["data"] = datetime.now(timezone.utc).isoformat()
+    
+    contribuicao = ContribuicaoBase(**contribuicao_data).model_dump()
+    await db.contribuicoes.insert_one(contribuicao)
+    contribuicao.pop("_id", None)
+    return contribuicao
+
+# Relatorios Routes
+@api_router.get("/relatorios/resumo")
+async def get_resumo(current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "relatorios", "view"):
+        raise HTTPException(status_code=403, detail="Sem permissão para visualizar relatórios")
+    
+    total_dizimistas = await db.dizimistas.count_documents({"ativo": True})
+    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(1000)
+    
+    total_arrecadado = sum(c.get("valor", 0) for c in contribuicoes)
+    
+    # Monthly breakdown
+    monthly = {}
+    for c in contribuicoes:
+        data = c.get("data", "")[:7]  # YYYY-MM
+        if data:
+            monthly[data] = monthly.get(data, 0) + c.get("valor", 0)
+    
+    return {
+        "total_dizimistas": total_dizimistas,
+        "total_arrecadado": total_arrecadado,
+        "total_contribuicoes": len(contribuicoes),
+        "por_mes": monthly
+    }
+
+@api_router.get("/relatorios/contribuicoes")
+async def get_relatorio_contribuicoes(
+    mes: Optional[str] = None,
+    ano: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    if not check_permission(current_user, "relatorios", "view"):
+        raise HTTPException(status_code=403, detail="Sem permissão para visualizar relatórios")
+    
+    query = {}
+    if mes and ano:
+        prefix = f"{ano}-{mes.zfill(2)}"
+        query["data"] = {"$regex": f"^{prefix}"}
+    elif ano:
+        query["data"] = {"$regex": f"^{ano}"}
+    
+    contribuicoes = await db.contribuicoes.find(query, {"_id": 0}).to_list(1000)
+    
+    # Get dizimistas names
+    dizimistas = await db.dizimistas.find({}, {"_id": 0, "id": 1, "nome": 1}).to_list(1000)
+    dizimistas_map = {d["id"]: d["nome"] for d in dizimistas}
+    
+    for c in contribuicoes:
+        c["dizimista_nome"] = dizimistas_map.get(c.get("dizimista_id"), "Desconhecido")
+    
+    return contribuicoes
+
+# Health check
+@api_router.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -77,7 +405,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

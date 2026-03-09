@@ -1,34 +1,217 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Login page split screen */
+.login-container {
+    display: flex;
+    min-height: 100vh;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
+.login-hero {
+    flex: 1;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .login-hero {
+        display: flex;
+        align-items: flex-end;
+        padding: 3rem;
     }
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
+.login-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 100%);
+}
+
+.login-hero-content {
+    position: relative;
+    z-index: 10;
     color: white;
 }
 
-.App-link {
-    color: #61dafb;
+.login-form-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: hsl(var(--background));
 }
 
-@keyframes App-logo-spin {
+/* Sidebar */
+.sidebar {
+    width: 16rem;
+    min-height: 100vh;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    position: fixed;
+    left: 0;
+    top: 0;
+    transition: transform 0.3s ease;
+    z-index: 40;
+}
+
+.sidebar-collapsed {
+    transform: translateX(-100%);
+}
+
+@media (min-width: 1024px) {
+    .sidebar {
+        transform: translateX(0) !important;
+    }
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    color: hsl(var(--primary-foreground) / 0.7);
+}
+
+.sidebar-link:hover {
+    background: hsl(var(--primary-foreground) / 0.1);
+    color: hsl(var(--primary-foreground));
+}
+
+.sidebar-link.active {
+    background: hsl(var(--primary-foreground) / 0.15);
+    color: hsl(var(--primary-foreground));
+}
+
+/* Main content with sidebar */
+.main-content {
+    margin-left: 0;
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+}
+
+@media (min-width: 1024px) {
+    .main-content {
+        margin-left: 16rem;
+    }
+}
+
+/* Header */
+.main-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Bento grid */
+.bento-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(1, 1fr);
+}
+
+@media (min-width: 640px) {
+    .bento-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .bento-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.bento-card-wide {
+    grid-column: span 1;
+}
+
+@media (min-width: 640px) {
+    .bento-card-wide {
+        grid-column: span 2;
+    }
+}
+
+/* Table styles */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    text-align: left;
+    padding: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: hsl(var(--muted-foreground));
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.data-table td {
+    padding: 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+}
+
+.data-table tr:hover {
+    background: hsl(var(--muted) / 0.5);
+}
+
+/* Badge variants */
+.badge-admin {
+    background: hsl(35 92% 65%);
+    color: hsl(222.2 47.4% 11.2%);
+}
+
+.badge-user {
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+}
+
+.badge-view {
+    background: hsl(210 40% 96.1%);
+    color: hsl(215 25% 27%);
+}
+
+.badge-edit {
+    background: hsl(199 89% 48% / 0.15);
+    color: hsl(199 89% 38%);
+}
+
+.badge-full {
+    background: hsl(142 76% 36% / 0.15);
+    color: hsl(142 76% 26%);
+}
+
+/* Animations */
+@keyframes fadeIn {
     from {
-        transform: rotate(0deg);
+        opacity: 0;
+        transform: translateY(10px);
     }
     to {
-        transform: rotate(360deg);
+        opacity: 1;
+        transform: translateY(0);
     }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.animate-delay-100 {
+    animation-delay: 100ms;
+}
+
+.animate-delay-200 {
+    animation-delay: 200ms;
+}
+
+.animate-delay-300 {
+    animation-delay: 300ms;
 }
