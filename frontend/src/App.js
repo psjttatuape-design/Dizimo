@@ -414,7 +414,7 @@ const DizimistasPage = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDizimista, setEditingDizimista] = useState(null);
-  const [formData, setFormData] = useState({ nome: "", telefone: "", email: "", endereco: "", valor_dizimo: 0 });
+  const [formData, setFormData] = useState({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", valor_dizimo: 0 });
   const { hasPermission } = useAuth();
 
   useEffect(() => {
@@ -444,7 +444,7 @@ const DizimistasPage = () => {
       }
       setDialogOpen(false);
       setEditingDizimista(null);
-      setFormData({ nome: "", telefone: "", email: "", endereco: "", valor_dizimo: 0 });
+      setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", valor_dizimo: 0 });
       fetchDizimistas();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Erro ao salvar");
@@ -458,6 +458,8 @@ const DizimistasPage = () => {
       telefone: dizimista.telefone,
       email: dizimista.email,
       endereco: dizimista.endereco,
+      numero: dizimista.numero || "",
+      complemento: dizimista.complemento || "",
       valor_dizimo: dizimista.valor_dizimo
     });
     setDialogOpen(true);
@@ -485,7 +487,7 @@ const DizimistasPage = () => {
             <p className="text-muted-foreground">Gerenciar membros dizimistas</p>
           </div>
           {canEdit && (
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", email: "", endereco: "", valor_dizimo: 0 }); } }}>
+            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", valor_dizimo: 0 }); } }}>
               <DialogTrigger asChild>
                 <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
                   <Plus className="w-4 h-4 mr-2" />
@@ -529,13 +531,36 @@ const DizimistasPage = () => {
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-6 gap-4">
+                    <div className="col-span-4 space-y-2">
+                      <Label htmlFor="endereco">Endereço</Label>
+                      <Input
+                        id="endereco"
+                        data-testid="input-endereco"
+                        value={formData.endereco}
+                        onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
+                        placeholder="Rua, Avenida..."
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-2">
+                      <Label htmlFor="numero">Número</Label>
+                      <Input
+                        id="numero"
+                        data-testid="input-numero"
+                        value={formData.numero}
+                        onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                        placeholder="Nº"
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="endereco">Endereço</Label>
+                    <Label htmlFor="complemento">Complemento</Label>
                     <Input
-                      id="endereco"
-                      data-testid="input-endereco"
-                      value={formData.endereco}
-                      onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
+                      id="complemento"
+                      data-testid="input-complemento"
+                      value={formData.complemento}
+                      onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
+                      placeholder="Apto, Bloco, Casa..."
                     />
                   </div>
                   <div className="space-y-2">

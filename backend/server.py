@@ -78,6 +78,8 @@ class DizimistaBase(BaseModel):
     telefone: str = ""
     email: str = ""
     endereco: str = ""
+    numero: str = ""
+    complemento: str = ""
     valor_dizimo: float = 0.0
     data_cadastro: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     ativo: bool = True
@@ -87,6 +89,8 @@ class DizimistaCreate(BaseModel):
     telefone: str = ""
     email: str = ""
     endereco: str = ""
+    numero: str = ""
+    complemento: str = ""
     valor_dizimo: float = 0.0
 
 class DizimistaUpdate(BaseModel):
@@ -94,6 +98,8 @@ class DizimistaUpdate(BaseModel):
     telefone: Optional[str] = None
     email: Optional[str] = None
     endereco: Optional[str] = None
+    numero: Optional[str] = None
+    complemento: Optional[str] = None
     valor_dizimo: Optional[float] = None
     ativo: Optional[bool] = None
 
