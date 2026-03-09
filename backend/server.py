@@ -111,6 +111,25 @@ class ContribuicaoCreate(BaseModel):
     data: Optional[str] = None
     observacao: str = ""
 
+class ValorMensalBase(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    mes: int  # 1-12
+    ano: int
+    valor: float
+    observacao: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class ValorMensalCreate(BaseModel):
+    mes: int
+    ano: int
+    valor: float
+    observacao: str = ""
+
+class ValorMensalUpdate(BaseModel):
+    valor: Optional[float] = None
+    observacao: Optional[str] = None
+
 # Helper functions
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -346,15 +365,21 @@ async def get_resumo(current_user: dict = Depends(get_current_user)):
     
     total_dizimistas = await db.dizimistas.count_documents({"ativo": True})
     contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(1000)
+    valores_mensais = await db.valores_mensais.find({}, {"_id": 0}).to_list(1000)
     
     total_arrecadado = sum(c.get("valor", 0) for c in contribuicoes)
+    total_arrecadado += sum(v.get("valor", 0) for v in valores_mensais)
     
-    # Monthly breakdown
+    # Monthly breakdown - combine contributions and manual monthly values
     monthly = {}
     for c in contribuicoes:
         data = c.get("data", "")[:7]  # YYYY-MM
         if data:
             monthly[data] = monthly.get(data, 0) + c.get("valor", 0)
+    
+    for v in valores_mensais:
+        key = f"{v.get('ano')}-{str(v.get('mes')).zfill(2)}"
+        monthly[key] = monthly.get(key, 0) + v.get("valor", 0)
     
     return {
         "total_dizimistas": total_dizimistas,
@@ -389,6 +414,61 @@ async def get_relatorio_contribuicoes(
         c["dizimista_nome"] = dizimistas_map.get(c.get("dizimista_id"), "Desconhecido")
     
     return contribuicoes
+
+# Valores Mensais Routes (Historical monthly totals)
+@api_router.get("/valores-mensais")
+async def list_valores_mensais(current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "relatorios", "view"):
+        raise HTTPException(status_code=403, detail="Sem permissão para visualizar valores mensais")
+    valores = await db.valores_mensais.find({}, {"_id": 0}).to_list(1000)
+    return valores
+
+@api_router.post("/valores-mensais")
+async def create_valor_mensal(data: ValorMensalCreate, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "relatorios", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para registrar valores mensais")
+    
+    # Check if already exists for this month/year
+    existing = await db.valores_mensais.find_one({"mes": data.mes, "ano": data.ano})
+    if existing:
+        # Update existing
+        await db.valores_mensais.update_one(
+            {"mes": data.mes, "ano": data.ano},
+            {"$set": {"valor": data.valor, "observacao": data.observacao}}
+        )
+        updated = await db.valores_mensais.find_one({"mes": data.mes, "ano": data.ano}, {"_id": 0})
+        return updated
+    
+    valor = ValorMensalBase(**data.model_dump()).model_dump()
+    await db.valores_mensais.insert_one(valor)
+    valor.pop("_id", None)
+    return valor
+
+@api_router.put("/valores-mensais/{valor_id}")
+async def update_valor_mensal(valor_id: str, data: ValorMensalUpdate, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "relatorios", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para editar valores mensais")
+    
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Nenhum dado para atualizar")
+    
+    result = await db.valores_mensais.update_one({"id": valor_id}, {"$set": update_data})
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Valor mensal não encontrado")
+    
+    valor = await db.valores_mensais.find_one({"id": valor_id}, {"_id": 0})
+    return valor
+
+@api_router.delete("/valores-mensais/{valor_id}")
+async def delete_valor_mensal(valor_id: str, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "relatorios", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para excluir valores mensais")
+    
+    result = await db.valores_mensais.delete_one({"id": valor_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Valor mensal não encontrado")
+    return {"message": "Valor mensal excluído com sucesso"}
 
 # Health check
 @api_router.get("/health")

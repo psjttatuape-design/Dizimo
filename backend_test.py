@@ -16,6 +16,7 @@ class DizimosAPITester:
         self.regular_user_token = None
         self.created_user_id = None
         self.created_dizimista_id = None
+        self.created_valor_id = None
         self.tests_run = 0
         self.tests_passed = 0
         self.test_results = []
@@ -372,6 +373,68 @@ class DizimosAPITester:
             
         return success
 
+    def test_create_valor_mensal(self) -> bool:
+        """Test creating monthly value"""
+        valor_data = {
+            "mes": 12,
+            "ano": 2025,
+            "valor": 1500.00,
+            "observacao": "Dízimos + ofertas Dezembro"
+        }
+        
+        success, response = self.run_test(
+            "Create Monthly Value",
+            "POST",
+            "valores-mensais",
+            200,
+            data=valor_data,
+            token=self.admin_token
+        )
+        
+        if success and 'id' in response:
+            self.created_valor_id = response['id']
+            return True
+        return False
+
+    def test_list_valores_mensais(self) -> bool:
+        """Test listing monthly values"""
+        success, response = self.run_test(
+            "List Monthly Values",
+            "GET",
+            "valores-mensais",
+            200,
+            token=self.admin_token
+        )
+        
+        if success and isinstance(response, list):
+            self.log_test("Monthly Values List Validation", True, f"Found {len(response)} monthly values")
+        elif success:
+            self.log_test("Monthly Values List Validation", False, "Response is not a list")
+            return False
+            
+        return success
+
+    def test_update_valor_mensal(self) -> bool:
+        """Test updating monthly value"""
+        if not hasattr(self, 'created_valor_id') or not self.created_valor_id:
+            self.log_test("Update Monthly Value", False, "No monthly value to update")
+            return False
+            
+        update_data = {
+            "valor": 1650.00,
+            "observacao": "Dízimos + ofertas + doações Dezembro"
+        }
+        
+        success, _ = self.run_test(
+            "Update Monthly Value",
+            "PUT",
+            f"valores-mensais/{self.created_valor_id}",
+            200,
+            data=update_data,
+            token=self.admin_token
+        )
+        return success
+
     def test_permission_denied_scenarios(self) -> bool:
         """Test permission denied scenarios"""
         all_passed = True
@@ -404,6 +467,18 @@ class DizimosAPITester:
     def cleanup(self) -> bool:
         """Clean up test data"""
         all_cleaned = True
+        
+        # Delete created monthly value
+        if hasattr(self, 'created_valor_id') and self.created_valor_id:
+            success, _ = self.run_test(
+                "Delete Test Monthly Value",
+                "DELETE",
+                f"valores-mensais/{self.created_valor_id}",
+                200,
+                token=self.admin_token
+            )
+            if not success:
+                all_cleaned = False
         
         # Delete created dizimista
         if self.created_dizimista_id:
@@ -463,6 +538,11 @@ class DizimosAPITester:
             
         self.test_list_dizimistas()
         self.test_list_contribuicoes()
+        
+        # Monthly values tests (new feature)
+        self.test_list_valores_mensais()
+        if self.test_create_valor_mensal():
+            self.test_update_valor_mensal()
         
         # Reports tests
         self.test_relatorio_resumo()

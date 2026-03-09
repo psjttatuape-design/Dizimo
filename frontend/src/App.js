@@ -6,7 +6,7 @@ import { Toaster, toast } from "sonner";
 import { 
   Users, Home, FileText, Settings, LogOut, Menu, X, 
   Plus, Edit, Trash2, Eye, EyeOff, Check, ChevronRight,
-  DollarSign, TrendingUp, UserCheck, Church
+  DollarSign, TrendingUp, UserCheck, Church, Calendar, BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -622,7 +623,29 @@ const DizimistasPage = () => {
 const RelatoriosPage = () => {
   const [resumo, setResumo] = useState(null);
   const [contribuicoes, setContribuicoes] = useState([]);
+  const [valoresMensais, setValoresMensais] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({ mes: "", ano: "", valor: "", observacao: "" });
+  const { hasPermission } = useAuth();
+
+  const meses = [
+    { value: "1", label: "Janeiro" },
+    { value: "2", label: "Fevereiro" },
+    { value: "3", label: "Março" },
+    { value: "4", label: "Abril" },
+    { value: "5", label: "Maio" },
+    { value: "6", label: "Junho" },
+    { value: "7", label: "Julho" },
+    { value: "8", label: "Agosto" },
+    { value: "9", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" }
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const anos = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
   useEffect(() => {
     fetchData();
@@ -630,16 +653,47 @@ const RelatoriosPage = () => {
 
   const fetchData = async () => {
     try {
-      const [resumoRes, contribRes] = await Promise.all([
+      const [resumoRes, contribRes, valoresRes] = await Promise.all([
         axios.get(`${API}/relatorios/resumo`),
-        axios.get(`${API}/relatorios/contribuicoes`)
+        axios.get(`${API}/relatorios/contribuicoes`),
+        axios.get(`${API}/valores-mensais`)
       ]);
       setResumo(resumoRes.data);
       setContribuicoes(contribRes.data);
+      setValoresMensais(valoresRes.data);
     } catch (error) {
       toast.error("Erro ao buscar relatórios");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/valores-mensais`, {
+        mes: parseInt(formData.mes),
+        ano: parseInt(formData.ano),
+        valor: parseFloat(formData.valor),
+        observacao: formData.observacao
+      });
+      toast.success("Valor mensal registrado!");
+      setDialogOpen(false);
+      setFormData({ mes: "", ano: "", valor: "", observacao: "" });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Erro ao salvar");
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Deseja excluir este valor mensal?")) return;
+    try {
+      await axios.delete(`${API}/valores-mensais/${id}`);
+      toast.success("Valor excluído!");
+      fetchData();
+    } catch (error) {
+      toast.error("Erro ao excluir");
     }
   };
 
@@ -652,12 +706,130 @@ const RelatoriosPage = () => {
     return new Date(dateStr).toLocaleDateString('pt-BR');
   };
 
+  const getMesNome = (mes) => {
+    return meses.find(m => m.value === String(mes))?.label || mes;
+  };
+
+  // Prepare chart data - last 12 months
+  const prepareChartData = () => {
+    if (!resumo?.por_mes) return [];
+    
+    const data = [];
+    const today = new Date();
+    
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const mesNome = meses[date.getMonth()].label.substring(0, 3);
+      const valor = resumo.por_mes[key] || 0;
+      
+      data.push({
+        mes: `${mesNome}/${date.getFullYear().toString().slice(-2)}`,
+        valor: valor,
+        mesCompleto: `${meses[date.getMonth()].label} ${date.getFullYear()}`
+      });
+    }
+    
+    return data;
+  };
+
+  const chartData = prepareChartData();
+  const canEdit = hasPermission("relatorios", "edit");
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-card border rounded-lg shadow-lg p-3">
+          <p className="font-medium">{payload[0].payload.mesCompleto}</p>
+          <p className="text-primary font-bold">{formatCurrency(payload[0].value)}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
-          <p className="text-muted-foreground">Visualize os relatórios de contribuições</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
+            <p className="text-muted-foreground">Visualize os relatórios de contribuições</p>
+          </div>
+          {canEdit && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-valor">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Registrar Mês Anterior
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Registrar Valor Mensal</DialogTitle>
+                  <DialogDescription>Insira o valor total de um mês anterior</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="mes">Mês *</Label>
+                      <Select value={formData.mes} onValueChange={(value) => setFormData({ ...formData, mes: value })}>
+                        <SelectTrigger data-testid="select-mes">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {meses.map(m => (
+                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ano">Ano *</Label>
+                      <Select value={formData.ano} onValueChange={(value) => setFormData({ ...formData, ano: value })}>
+                        <SelectTrigger data-testid="select-ano">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {anos.map(a => (
+                            <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="valor">Valor Total (R$) *</Label>
+                    <Input
+                      id="valor"
+                      data-testid="input-valor-mensal"
+                      type="number"
+                      step="0.01"
+                      value={formData.valor}
+                      onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+                      placeholder="0,00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="observacao">Observação</Label>
+                    <Input
+                      id="observacao"
+                      data-testid="input-observacao"
+                      value={formData.observacao}
+                      onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
+                      placeholder="Ex: Dízimos + ofertas"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" data-testid="btn-salvar-valor">
+                      Registrar
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="bento-grid">
@@ -688,6 +860,103 @@ const RelatoriosPage = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Monthly Contributions Chart */}
+        <Card className="bento-card-wide" data-testid="card-grafico">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Contribuições Mensais
+            </CardTitle>
+            <CardDescription>Últimos 12 meses de arrecadação</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Carregando...
+              </div>
+            ) : chartData.length > 0 ? (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="mes" 
+                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      axisLine={{ stroke: 'hsl(var(--border))' }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      axisLine={{ stroke: 'hsl(var(--border))' }}
+                      tickFormatter={(value) => `R$${(value/1000).toFixed(0)}k`}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar 
+                      dataKey="valor" 
+                      fill="hsl(215 25% 27%)" 
+                      radius={[4, 4, 0, 0]}
+                      name="Arrecadado"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                Nenhum dado disponível
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Monthly Values Table */}
+        {valoresMensais.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Valores Mensais Registrados
+              </CardTitle>
+              <CardDescription>Totais mensais inseridos manualmente</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mês/Ano</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Observação</TableHead>
+                    {canEdit && <TableHead className="text-right">Ações</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {valoresMensais
+                    .sort((a, b) => (b.ano * 100 + b.mes) - (a.ano * 100 + a.mes))
+                    .map((valor) => (
+                    <TableRow key={valor.id} data-testid={`row-valor-${valor.id}`}>
+                      <TableCell className="font-medium">
+                        {getMesNome(valor.mes)} / {valor.ano}
+                      </TableCell>
+                      <TableCell>{formatCurrency(valor.valor)}</TableCell>
+                      <TableCell>{valor.observacao || "-"}</TableCell>
+                      {canEdit && (
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleDelete(valor.id)}
+                            data-testid={`btn-delete-valor-${valor.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
