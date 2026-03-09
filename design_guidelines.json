@@ -1,0 +1,161 @@
+{
+  "identity": {
+    "name": "E1",
+    "mission": "Create a serene, trustworthy, and clear interface for church tithe management, blending modern stewardship with timeless values.",
+    "tone": "Trustworthy, Serene, Clear, Respectful",
+    "theme_strategy": "Light Mode Primary (Divinity/Clarity) with Dark Mode Support (Vigil/Focus)",
+    "principles": [
+      "Clarity is Kindness: Data must be legible and actions obvious.",
+      "Serenity in Structure: Generous spacing, no clutter.",
+      "Respectful Hierarchy: Primary actions (Giving/Saving) feel important.",
+      "Soft Precision: Rounded corners, gentle shadows, crisp borders."
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Outfit, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-5xl font-bold tracking-tight",
+      "h2": "text-3xl font-semibold tracking-tight",
+      "h3": "text-2xl font-semibold tracking-tight",
+      "h4": "text-xl font-medium tracking-tight",
+      "body_lg": "text-lg leading-relaxed",
+      "body_base": "text-base leading-relaxed text-slate-600 dark:text-slate-400",
+      "body_sm": "text-sm text-slate-500 dark:text-slate-400",
+      "caption": "text-xs font-medium uppercase tracking-wider text-slate-400"
+    },
+    "installation": "Add 'Outfit' via Google Fonts link in index.html or import in CSS."
+  },
+  "colors": {
+    "palette_name": "Serene Stewardship",
+    "light": {
+      "background": "hsl(210 40% 98%)",
+      "foreground": "hsl(222.2 84% 4.9%)",
+      "card": "hsl(0 0% 100%)",
+      "card_foreground": "hsl(222.2 84% 4.9%)",
+      "popover": "hsl(0 0% 100%)",
+      "popover_foreground": "hsl(222.2 84% 4.9%)",
+      "primary": "hsl(215 25% 27%)",
+      "primary_foreground": "hsl(210 40% 98%)",
+      "secondary": "hsl(35 92% 65%)",
+      "secondary_foreground": "hsl(222.2 47.4% 11.2%)",
+      "muted": "hsl(210 40% 96.1%)",
+      "muted_foreground": "hsl(215.4 16.3% 46.9%)",
+      "accent": "hsl(210 40% 96.1%)",
+      "accent_foreground": "hsl(222.2 47.4% 11.2%)",
+      "destructive": "hsl(0 84.2% 60.2%)",
+      "destructive_foreground": "hsl(210 40% 98%)",
+      "border": "hsl(214.3 31.8% 91.4%)",
+      "input": "hsl(214.3 31.8% 91.4%)",
+      "ring": "hsl(215 25% 27%)"
+    },
+    "dark": {
+      "background": "hsl(222.2 84% 4.9%)",
+      "foreground": "hsl(210 40% 98%)",
+      "card": "hsl(222.2 84% 4.9%)",
+      "card_foreground": "hsl(210 40% 98%)",
+      "popover": "hsl(222.2 84% 4.9%)",
+      "popover_foreground": "hsl(210 40% 98%)",
+      "primary": "hsl(210 40% 98%)",
+      "primary_foreground": "hsl(222.2 47.4% 11.2%)",
+      "secondary": "hsl(217.2 32.6% 17.5%)",
+      "secondary_foreground": "hsl(210 40% 98%)",
+      "muted": "hsl(217.2 32.6% 17.5%)",
+      "muted_foreground": "hsl(215 20.2% 65.1%)",
+      "accent": "hsl(217.2 32.6% 17.5%)",
+      "accent_foreground": "hsl(210 40% 98%)",
+      "destructive": "hsl(0 62.8% 30.6%)",
+      "destructive_foreground": "hsl(210 40% 98%)",
+      "border": "hsl(217.2 32.6% 17.5%)",
+      "input": "hsl(217.2 32.6% 17.5%)",
+      "ring": "hsl(212.7 26.8% 83.9%)"
+    },
+    "usage_rules": [
+      "Use Primary (Deep Slate) for Sidebar, Headers, and Primary Buttons.",
+      "Use Secondary (Amber Gold) for 'Positive/Divine' actions like 'Registrar Dízimo' (Record Tithe) or 'Novo Membro' (New Member).",
+      "Backgrounds should be off-white (hsl(210 40% 98%)) to reduce eye strain, not pure white.",
+      "Cards must remain pure white with subtle borders."
+    ]
+  },
+  "layout_strategies": {
+    "dashboard": {
+      "type": "Sidebar Layout",
+      "structure": [
+        "Sidebar (Fixed Left, w-64, Primary Dark Bg)",
+        "Header (Sticky Top, Glassmorphism, Breadcrumbs, User Profile)",
+        "Main Content (p-6 or p-8, Bento Grid Layout)"
+      ],
+      "grid_mode": "Bento Mode A (Asymmetrical)",
+      "spacing": "Gap-6 or Gap-8"
+    },
+    "login": {
+      "type": "Split Screen",
+      "structure": [
+        "Left: 50% width, Hero Image (Stained Glass), Overlay with Quote",
+        "Right: 50% width, Centered Form, Clean White Bg"
+      ]
+    },
+    "tables": {
+      "style": "Clean Surface",
+      "features": [
+        "No vertical borders",
+        "Generous row padding (py-4)",
+        "Hover: bg-slate-50",
+        "Header: uppercase, text-xs, text-muted-foreground, tracking-wider"
+      ]
+    }
+  },
+  "components": {
+    "cards": {
+      "base": "bg-card text-card-foreground rounded-xl border shadow-sm transition-all duration-200 hover:shadow-md",
+      "header": "p-6 pb-2",
+      "content": "p-6 pt-0"
+    },
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground shadow hover:bg-primary/90 rounded-lg h-10 px-6 font-medium tracking-wide",
+      "secondary": "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 rounded-lg h-10 px-6 font-medium",
+      "ghost": "hover:bg-accent hover:text-accent-foreground rounded-lg h-10 px-4"
+    },
+    "inputs": {
+      "base": "flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "charts": {
+      "library": "recharts",
+      "palette": ["#1e293b", "#d97706", "#64748b", "#cbd5e1", "#f59e0b"]
+    }
+  },
+  "assets": {
+    "images": {
+      "login_bg": "https://images.unsplash.com/photo-1741903736332-8f87836f88eb?q=85&w=1920&auto=format&fit=crop",
+      "empty_state": "https://images.unsplash.com/photo-1766931161291-f9f6b40b8c1e?q=85&w=800&auto=format&fit=crop",
+      "logo_placeholder": "Use a simple Cross or Dove icon from Lucide-React"
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px or 2px, consistent across app"
+    }
+  },
+  "functionality_map": {
+    "permissions": {
+      "view_only": "Gray/Neutral Badges",
+      "edit": "Blue/Info Badges",
+      "admin": "Amber/Gold Badges"
+    },
+    "toasts": "Use 'sonner' for all notifications (Success: Green, Error: Red, Info: Blue)",
+    "forms": "Use 'react-hook-form' with 'zod' schema validation."
+  },
+  "universal_guidelines": [
+    "Do not use gradients for backgrounds, use solid soft colors or subtle textures.",
+    "Ensure all interactive elements have data-testid attributes.",
+    "Use 'Outfit' font for all headings to establish character.",
+    "Maintain 2x whitespace in containers.",
+    "Login page must be split-screen.",
+    "Dashboard must use a Bento Grid layout.",
+    "Tables must have sticky headers and pagination.",
+    "Use Skeleton loaders for data fetching states.",
+    "Do not ask clarifying questions, assume best practices."
+  ]
+}
