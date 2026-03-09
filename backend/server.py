@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,6 +13,9 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
 from passlib.context import CryptContext
+from io import BytesIO
+import openpyxl
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -80,6 +84,7 @@ class DizimistaBase(BaseModel):
     endereco: str = ""
     numero: str = ""
     complemento: str = ""
+    data_nascimento: str = ""
     valor_dizimo: float = 0.0
     data_cadastro: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     ativo: bool = True
@@ -91,6 +96,7 @@ class DizimistaCreate(BaseModel):
     endereco: str = ""
     numero: str = ""
     complemento: str = ""
+    data_nascimento: str = ""
     valor_dizimo: float = 0.0
 
 class DizimistaUpdate(BaseModel):
@@ -100,6 +106,7 @@ class DizimistaUpdate(BaseModel):
     endereco: Optional[str] = None
     numero: Optional[str] = None
     complemento: Optional[str] = None
+    data_nascimento: Optional[str] = None
     valor_dizimo: Optional[float] = None
     ativo: Optional[bool] = None
 
@@ -298,6 +305,211 @@ async def update_user_permissions(user_id: str, permissions: UserPermissions, cu
     return user
 
 # Dizimistas Routes
+# Excel routes first (before dynamic routes)
+@api_router.get("/dizimistas/template/excel")
+async def download_template(current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "view"):
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Dizimistas"
+    
+    # Header style
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="b91c1c", end_color="b91c1c", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    
+    headers = ["Nome*", "Telefone", "Email", "Endereço", "Número", "Complemento", "Data Nascimento (DD/MM/AAAA)", "Valor Dízimo"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 20
+    
+    # Example row
+    example = ["João da Silva", "(11) 99999-9999", "joao@email.com", "Rua das Flores", "123", "Apto 45", "15/06/1980", "100.00"]
+    for col, value in enumerate(example, 1):
+        cell = ws.cell(row=2, column=col, value=value)
+        cell.border = thin_border
+        cell.font = Font(italic=True, color="888888")
+    
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=template_dizimistas.xlsx"}
+    )
+
+@api_router.post("/dizimistas/import/excel")
+async def import_dizimistas_excel(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para importar dizimistas")
+    
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Arquivo deve ser Excel (.xlsx ou .xls)")
+    
+    content = await file.read()
+    wb = openpyxl.load_workbook(BytesIO(content))
+    ws = wb.active
+    
+    imported = 0
+    errors = []
+    
+    for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
+        if not row[0]:  # Skip empty rows
+            continue
+        
+        try:
+            # Parse date
+            data_nasc = ""
+            if row[6]:
+                if isinstance(row[6], datetime):
+                    data_nasc = row[6].strftime("%Y-%m-%d")
+                else:
+                    parts = str(row[6]).split("/")
+                    if len(parts) == 3:
+                        data_nasc = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+            
+            # Parse valor
+            valor = 0.0
+            if row[7]:
+                valor = float(str(row[7]).replace(",", "."))
+            
+            dizimista = {
+                "id": str(uuid.uuid4()),
+                "nome": str(row[0]).strip(),
+                "telefone": str(row[1] or "").strip(),
+                "email": str(row[2] or "").strip(),
+                "endereco": str(row[3] or "").strip(),
+                "numero": str(row[4] or "").strip(),
+                "complemento": str(row[5] or "").strip(),
+                "data_nascimento": data_nasc,
+                "valor_dizimo": valor,
+                "data_cadastro": datetime.now(timezone.utc).isoformat(),
+                "ativo": True
+            }
+            await db.dizimistas.insert_one(dizimista)
+            imported += 1
+        except Exception as e:
+            errors.append(f"Linha {row_num}: {str(e)}")
+    
+    return {"imported": imported, "errors": errors}
+
+@api_router.get("/dizimistas/export/excel")
+async def export_dizimistas_excel(
+    status: Optional[str] = None,
+    mes_aniversario: Optional[int] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    if not check_permission(current_user, "dizimistas", "view"):
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    query = {}
+    if status == "ativo":
+        query["ativo"] = True
+    elif status == "inativo":
+        query["ativo"] = False
+    
+    dizimistas = await db.dizimistas.find(query, {"_id": 0}).to_list(10000)
+    
+    # Filter by birthday month
+    if mes_aniversario:
+        filtered = []
+        for d in dizimistas:
+            if d.get("data_nascimento"):
+                try:
+                    parts = d["data_nascimento"].split("-")
+                    if len(parts) >= 2 and int(parts[1]) == mes_aniversario:
+                        filtered.append(d)
+                except:
+                    pass
+        dizimistas = filtered
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Lista de Dizimistas"
+    
+    # Header style
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="b91c1c", end_color="b91c1c", fill_type="solid")
+    header_align = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    
+    headers = ["Nome", "Telefone", "Email", "Endereço", "Nº", "Complemento", "Aniversário", "Valor Dízimo", "Status"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+    
+    ws.column_dimensions['A'].width = 30
+    ws.column_dimensions['B'].width = 15
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 30
+    ws.column_dimensions['E'].width = 8
+    ws.column_dimensions['F'].width = 15
+    ws.column_dimensions['G'].width = 12
+    ws.column_dimensions['H'].width = 12
+    ws.column_dimensions['I'].width = 10
+    
+    for row_num, d in enumerate(dizimistas, 2):
+        # Format birthday
+        aniversario = ""
+        if d.get("data_nascimento"):
+            try:
+                parts = d["data_nascimento"].split("-")
+                if len(parts) == 3:
+                    aniversario = f"{parts[2]}/{parts[1]}"
+            except:
+                pass
+        
+        values = [
+            d.get("nome", ""),
+            d.get("telefone", ""),
+            d.get("email", ""),
+            d.get("endereco", ""),
+            d.get("numero", ""),
+            d.get("complemento", ""),
+            aniversario,
+            d.get("valor_dizimo", 0),
+            "Ativo" if d.get("ativo", True) else "Inativo"
+        ]
+        for col, value in enumerate(values, 1):
+            cell = ws.cell(row=row_num, column=col, value=value)
+            cell.border = thin_border
+    
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = "lista_dizimistas"
+    if status:
+        filename += f"_{status}"
+    if mes_aniversario:
+        meses = ["", "janeiro", "fevereiro", "marco", "abril", "maio", "junho", 
+                 "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+        filename += f"_aniversario_{meses[mes_aniversario]}"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}.xlsx"}
+    )
+
 @api_router.get("/dizimistas")
 async def list_dizimistas(current_user: dict = Depends(get_current_user)):
     if not check_permission(current_user, "dizimistas", "view"):

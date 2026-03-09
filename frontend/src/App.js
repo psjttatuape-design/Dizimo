@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, useRef } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -6,7 +6,8 @@ import { Toaster, toast } from "sonner";
 import { 
   Users, Home, FileText, Settings, LogOut, Menu, X, 
   Plus, Edit, Trash2, Eye, EyeOff, Check, ChevronRight,
-  DollarSign, TrendingUp, UserCheck, Church, Calendar, BarChart3
+  DollarSign, TrendingUp, UserCheck, Church, Calendar, BarChart3,
+  Upload, Download, Printer, FileSpreadsheet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -413,9 +415,29 @@ const DizimistasPage = () => {
   const [dizimistas, setDizimistas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [editingDizimista, setEditingDizimista] = useState(null);
-  const [formData, setFormData] = useState({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", valor_dizimo: 0 });
+  const [formData, setFormData] = useState({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", valor_dizimo: 0 });
+  const [exportFilters, setExportFilters] = useState({ status: "", mes_aniversario: "" });
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
   const { hasPermission } = useAuth();
+
+  const meses = [
+    { value: "1", label: "Janeiro" },
+    { value: "2", label: "Fevereiro" },
+    { value: "3", label: "Março" },
+    { value: "4", label: "Abril" },
+    { value: "5", label: "Maio" },
+    { value: "6", label: "Junho" },
+    { value: "7", label: "Julho" },
+    { value: "8", label: "Agosto" },
+    { value: "9", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" }
+  ];
 
   useEffect(() => {
     fetchDizimistas();
@@ -444,7 +466,7 @@ const DizimistasPage = () => {
       }
       setDialogOpen(false);
       setEditingDizimista(null);
-      setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", valor_dizimo: 0 });
+      setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", valor_dizimo: 0 });
       fetchDizimistas();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Erro ao salvar");
@@ -460,6 +482,7 @@ const DizimistasPage = () => {
       endereco: dizimista.endereco,
       numero: dizimista.numero || "",
       complemento: dizimista.complemento || "",
+      data_nascimento: dizimista.data_nascimento || "",
       valor_dizimo: dizimista.valor_dizimo
     });
     setDialogOpen(true);
@@ -476,114 +499,305 @@ const DizimistasPage = () => {
     }
   };
 
+  const downloadTemplate = async () => {
+    try {
+      const response = await axios.get(`${API}/dizimistas/template/excel`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'template_dizimistas.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Template baixado!");
+    } catch (error) {
+      toast.error("Erro ao baixar template");
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await axios.post(`${API}/dizimistas/import/excel`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success(`${response.data.imported} dizimistas importados!`);
+      if (response.data.errors?.length > 0) {
+        toast.warning(`${response.data.errors.length} erros encontrados`);
+      }
+      setImportDialogOpen(false);
+      fetchDizimistas();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Erro ao importar");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const exportList = async () => {
+    try {
+      let url = `${API}/dizimistas/export/excel?`;
+      if (exportFilters.status) url += `status=${exportFilters.status}&`;
+      if (exportFilters.mes_aniversario) url += `mes_aniversario=${exportFilters.mes_aniversario}`;
+      
+      const response = await axios.get(url, { responseType: 'blob' });
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', 'lista_dizimistas.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Lista exportada!");
+      setExportDialogOpen(false);
+    } catch (error) {
+      toast.error("Erro ao exportar");
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "-";
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
   const canEdit = hasPermission("dizimistas", "edit");
 
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dizimistas</h1>
             <p className="text-muted-foreground">Gerenciar membros dizimistas</p>
           </div>
-          {canEdit && (
-            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", valor_dizimo: 0 }); } }}>
-              <DialogTrigger asChild>
-                <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Novo Dizimista
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Import/Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" data-testid="btn-excel-menu">
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{editingDizimista ? "Editar Dizimista" : "Novo Dizimista"}</DialogTitle>
-                  <DialogDescription>Preencha os dados do dizimista</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nome">Nome *</Label>
-                    <Input
-                      id="nome"
-                      data-testid="input-nome"
-                      value={formData.nome}
-                      onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Importar</DropdownMenuLabel>
+                <DropdownMenuItem onClick={downloadTemplate} data-testid="btn-download-template">
+                  <Download className="w-4 h-4 mr-2" />
+                  Baixar Template
+                </DropdownMenuItem>
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => setImportDialogOpen(true)} data-testid="btn-import-excel">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Importar Arquivo
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Exportar</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setExportDialogOpen(true)} data-testid="btn-export-excel">
+                  <Printer className="w-4 h-4 mr-2" />
+                  Imprimir Lista
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {canEdit && (
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", valor_dizimo: 0 }); } }}>
+                <DialogTrigger asChild>
+                  <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Novo Dizimista
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingDizimista ? "Editar Dizimista" : "Novo Dizimista"}</DialogTitle>
+                    <DialogDescription>Preencha os dados do dizimista</DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="telefone">Telefone</Label>
+                      <Label htmlFor="nome">Nome *</Label>
                       <Input
-                        id="telefone"
-                        data-testid="input-telefone"
-                        value={formData.telefone}
-                        onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                        id="nome"
+                        data-testid="input-nome"
+                        value={formData.nome}
+                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                        required
                       />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="telefone">Telefone</Label>
+                        <Input
+                          id="telefone"
+                          data-testid="input-telefone"
+                          value={formData.telefone}
+                          onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          data-testid="input-email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-6 gap-4">
+                      <div className="col-span-4 space-y-2">
+                        <Label htmlFor="endereco">Endereço</Label>
+                        <Input
+                          id="endereco"
+                          data-testid="input-endereco"
+                          value={formData.endereco}
+                          onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
+                          placeholder="Rua, Avenida..."
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                        <Label htmlFor="numero">Número</Label>
+                        <Input
+                          id="numero"
+                          data-testid="input-numero"
+                          value={formData.numero}
+                          onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                          placeholder="Nº"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="complemento">Complemento</Label>
+                        <Input
+                          id="complemento"
+                          data-testid="input-complemento"
+                          value={formData.complemento}
+                          onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
+                          placeholder="Apto, Bloco..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="data_nascimento">Data Nascimento</Label>
+                        <Input
+                          id="data_nascimento"
+                          data-testid="input-nascimento"
+                          type="date"
+                          value={formData.data_nascimento}
+                          onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="valor_dizimo">Valor do Dízimo (R$)</Label>
                       <Input
-                        id="email"
-                        data-testid="input-email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        id="valor_dizimo"
+                        data-testid="input-valor"
+                        type="number"
+                        step="0.01"
+                        value={formData.valor_dizimo}
+                        onChange={(e) => setFormData({ ...formData, valor_dizimo: parseFloat(e.target.value) || 0 })}
                       />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-6 gap-4">
-                    <div className="col-span-4 space-y-2">
-                      <Label htmlFor="endereco">Endereço</Label>
-                      <Input
-                        id="endereco"
-                        data-testid="input-endereco"
-                        value={formData.endereco}
-                        onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                        placeholder="Rua, Avenida..."
-                      />
-                    </div>
-                    <div className="col-span-2 space-y-2">
-                      <Label htmlFor="numero">Número</Label>
-                      <Input
-                        id="numero"
-                        data-testid="input-numero"
-                        value={formData.numero}
-                        onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                        placeholder="Nº"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="complemento">Complemento</Label>
-                    <Input
-                      id="complemento"
-                      data-testid="input-complemento"
-                      value={formData.complemento}
-                      onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
-                      placeholder="Apto, Bloco, Casa..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="valor_dizimo">Valor do Dízimo (R$)</Label>
-                    <Input
-                      id="valor_dizimo"
-                      data-testid="input-valor"
-                      type="number"
-                      step="0.01"
-                      value={formData.valor_dizimo}
-                      onChange={(e) => setFormData({ ...formData, valor_dizimo: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit" data-testid="btn-salvar-dizimista">
-                      {editingDizimista ? "Atualizar" : "Cadastrar"}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
+                    <DialogFooter>
+                      <Button type="submit" data-testid="btn-salvar-dizimista">
+                        {editingDizimista ? "Atualizar" : "Cadastrar"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
+
+        {/* Import Dialog */}
+        <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Importar Dizimistas</DialogTitle>
+              <DialogDescription>Selecione um arquivo Excel (.xlsx) com os dados dos dizimistas</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground mb-4">Arraste o arquivo ou clique para selecionar</p>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  ref={fileInputRef}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing}>
+                  {importing ? "Importando..." : "Selecionar Arquivo"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Não tem o template? <button onClick={downloadTemplate} className="text-primary underline">Baixe aqui</button>
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Export Dialog */}
+        <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Exportar Lista de Dizimistas</DialogTitle>
+              <DialogDescription>Selecione os filtros para a lista</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={exportFilters.status} onValueChange={(v) => setExportFilters({ ...exportFilters, status: v })}>
+                  <SelectTrigger data-testid="select-status-export">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="ativo">Apenas Ativos</SelectItem>
+                    <SelectItem value="inativo">Apenas Inativos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Mês de Aniversário</Label>
+                <Select value={exportFilters.mes_aniversario} onValueChange={(v) => setExportFilters({ ...exportFilters, mes_aniversario: v })}>
+                  <SelectTrigger data-testid="select-mes-export">
+                    <SelectValue placeholder="Todos os meses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os meses</SelectItem>
+                    {meses.map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExportDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={exportList} data-testid="btn-confirmar-export">
+                <Download className="w-4 h-4 mr-2" />
+                Exportar Excel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Card>
           <CardContent className="p-0">
@@ -592,7 +806,7 @@ const DizimistasPage = () => {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Aniversário</TableHead>
                   <TableHead>Valor Dízimo</TableHead>
                   <TableHead>Status</TableHead>
                   {canEdit && <TableHead className="text-right">Ações</TableHead>}
@@ -616,7 +830,7 @@ const DizimistasPage = () => {
                     <TableRow key={dizimista.id} data-testid={`row-dizimista-${dizimista.id}`}>
                       <TableCell className="font-medium">{dizimista.nome}</TableCell>
                       <TableCell>{dizimista.telefone || "-"}</TableCell>
-                      <TableCell>{dizimista.email || "-"}</TableCell>
+                      <TableCell>{formatDate(dizimista.data_nascimento)}</TableCell>
                       <TableCell>
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dizimista.valor_dizimo || 0)}
                       </TableCell>
