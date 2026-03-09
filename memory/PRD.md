@@ -31,7 +31,12 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 - **Login Page**: Split-screen com imagem de vitral, formulário de login
 - **Dashboard**: Cards com estatísticas (total dizimistas, arrecadado, contribuições)
 - **Página Dizimistas**: CRUD completo com permissões
-- **Página Relatórios**: Resumo e histórico de contribuições
+- **Página Relatórios**: 
+  - Resumo com cards (total dizimistas, arrecadado, contribuições)
+  - Gráfico de barras de contribuições mensais (últimos 12 meses)
+  - Formulário para registrar valores totais de meses anteriores
+  - Tabela de valores mensais registrados
+  - Histórico de contribuições
 - **Aba Configurações**: 
   - Tab Usuários: Criar, editar, excluir usuários
   - Tab Permissões: Configurar permissões granulares por usuário
@@ -47,6 +52,7 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 - GET/POST /api/contribuicoes - Contribuições
 - GET /api/relatorios/resumo - Resumo estatístico
 - GET /api/relatorios/contribuicoes - Lista de contribuições
+- GET/POST/PUT/DELETE /api/valores-mensais - Valores mensais históricos
 
 ## Next Tasks / Backlog
 - P1: Exportar relatórios em PDF/Excel
@@ -54,4 +60,4 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 - P2: Filtros por período nos relatórios
 - P2: Reset de senha por admin
 - P3: Notificações por email
-- P3: Dashboard com gráficos de tendência
+- P3: Comparativo ano a ano
