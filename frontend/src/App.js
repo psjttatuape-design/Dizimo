@@ -158,7 +158,7 @@ const LoginPage = () => {
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-red-800">Paróquia São Judas Tadeu</h1>
             <p className="text-muted-foreground mt-1">Tatuapé - São Paulo</p>
-            <p className="text-lg font-medium text-amber-600 mt-3">Sistema de Gestão de Dízimos</p>
+            <p className="text-2xl font-bold text-green-600 mt-4">Sistema de Gestão de Dízimos</p>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -199,7 +199,7 @@ const LoginPage = () => {
             
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full bg-green-600 hover:bg-green-700 text-white" 
               disabled={isLoading}
               data-testid="login-submit"
             >
