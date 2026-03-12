@@ -86,9 +86,10 @@ class DizimistaBase(BaseModel):
     complemento: str = ""
     data_nascimento: str = ""
     nota: str = "Novo"  # Atualizar, Novo, OK
+    status: str = "Ativo"  # Ativo, Pendente, Inativo
     valor_dizimo: float = 0.0
     data_cadastro: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    ativo: bool = True
+    ultima_contribuicao: str = ""
 
 class DizimistaCreate(BaseModel):
     nome: str
@@ -99,6 +100,7 @@ class DizimistaCreate(BaseModel):
     complemento: str = ""
     data_nascimento: str = ""
     nota: str = "Novo"
+    status: str = "Ativo"
     valor_dizimo: float = 0.0
 
 class DizimistaUpdate(BaseModel):
@@ -110,8 +112,8 @@ class DizimistaUpdate(BaseModel):
     complemento: Optional[str] = None
     data_nascimento: Optional[str] = None
     nota: Optional[str] = None
+    status: Optional[str] = None
     valor_dizimo: Optional[float] = None
-    ativo: Optional[bool] = None
 
 class ContribuicaoBase(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -576,7 +578,62 @@ async def create_contribuicao(data: ContribuicaoCreate, current_user: dict = Dep
     contribuicao = ContribuicaoBase(**contribuicao_data).model_dump()
     await db.contribuicoes.insert_one(contribuicao)
     contribuicao.pop("_id", None)
+    
+    # Update dizimista status to Ativo and ultima_contribuicao
+    await db.dizimistas.update_one(
+        {"id": data.dizimista_id},
+        {"$set": {
+            "status": "Ativo",
+            "ultima_contribuicao": contribuicao_data["data"]
+        }}
+    )
+    
     return contribuicao
+
+# Update dizimistas status based on contributions
+async def update_all_dizimistas_status():
+    """Update status of all dizimistas based on their last contribution date"""
+    now = datetime.now(timezone.utc)
+    dizimistas = await db.dizimistas.find({}, {"_id": 0}).to_list(10000)
+    
+    for d in dizimistas:
+        ultima = d.get("ultima_contribuicao", "")
+        if not ultima:
+            # Check contributions collection for this dizimista
+            last_contrib = await db.contribuicoes.find_one(
+                {"dizimista_id": d["id"]},
+                sort=[("data", -1)]
+            )
+            if last_contrib:
+                ultima = last_contrib.get("data", "")
+        
+        if ultima:
+            try:
+                last_date = datetime.fromisoformat(ultima.replace("Z", "+00:00"))
+                months_diff = (now.year - last_date.year) * 12 + (now.month - last_date.month)
+                
+                if months_diff >= 6:
+                    new_status = "Inativo"
+                elif months_diff >= 2:
+                    new_status = "Pendente"
+                else:
+                    new_status = "Ativo"
+                
+                if d.get("status") != new_status:
+                    await db.dizimistas.update_one(
+                        {"id": d["id"]},
+                        {"$set": {"status": new_status, "ultima_contribuicao": ultima}}
+                    )
+            except:
+                pass
+
+@api_router.post("/dizimistas/atualizar-status")
+async def trigger_status_update(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Apenas administradores podem atualizar status")
+    
+    await update_all_dizimistas_status()
+    return {"message": "Status dos dizimistas atualizado com sucesso"}
 
 # Relatorios Routes
 @api_router.get("/relatorios/resumo")
@@ -584,7 +641,7 @@ async def get_resumo(current_user: dict = Depends(get_current_user)):
     if not check_permission(current_user, "relatorios", "view"):
         raise HTTPException(status_code=403, detail="Sem permissão para visualizar relatórios")
     
-    total_dizimistas = await db.dizimistas.count_documents({"ativo": True})
+    total_dizimistas = await db.dizimistas.count_documents({"status": "Ativo"})
     contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(1000)
     valores_mensais = await db.valores_mensais.find({}, {"_id": 0}).to_list(1000)
     
@@ -611,28 +668,51 @@ async def get_resumo(current_user: dict = Depends(get_current_user)):
 
 @api_router.get("/relatorios/contribuicoes")
 async def get_relatorio_contribuicoes(
-    mes: Optional[str] = None,
-    ano: Optional[str] = None,
+    mes_inicio: Optional[str] = None,
+    ano_inicio: Optional[str] = None,
+    mes_fim: Optional[str] = None,
+    ano_fim: Optional[str] = None,
+    status: Optional[str] = None,
+    nota: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     if not check_permission(current_user, "relatorios", "view"):
         raise HTTPException(status_code=403, detail="Sem permissão para visualizar relatórios")
     
-    query = {}
-    if mes and ano:
-        prefix = f"{ano}-{mes.zfill(2)}"
-        query["data"] = {"$regex": f"^{prefix}"}
-    elif ano:
-        query["data"] = {"$regex": f"^{ano}"}
+    # Get all contributions
+    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(10000)
     
-    contribuicoes = await db.contribuicoes.find(query, {"_id": 0}).to_list(1000)
+    # Get dizimistas with status and nota
+    dizimistas = await db.dizimistas.find({}, {"_id": 0}).to_list(10000)
+    dizimistas_map = {d["id"]: d for d in dizimistas}
     
-    # Get dizimistas names
-    dizimistas = await db.dizimistas.find({}, {"_id": 0, "id": 1, "nome": 1}).to_list(1000)
-    dizimistas_map = {d["id"]: d["nome"] for d in dizimistas}
+    # Filter by period
+    if ano_inicio and mes_inicio:
+        data_inicio = f"{ano_inicio}-{mes_inicio.zfill(2)}"
+        contribuicoes = [c for c in contribuicoes if c.get("data", "")[:7] >= data_inicio]
     
+    if ano_fim and mes_fim:
+        data_fim = f"{ano_fim}-{mes_fim.zfill(2)}"
+        contribuicoes = [c for c in contribuicoes if c.get("data", "")[:7] <= data_fim]
+    
+    # Filter by status and nota (from dizimista)
+    if status or nota:
+        filtered = []
+        for c in contribuicoes:
+            diz = dizimistas_map.get(c.get("dizimista_id"), {})
+            if status and diz.get("status") != status:
+                continue
+            if nota and diz.get("nota") != nota:
+                continue
+            filtered.append(c)
+        contribuicoes = filtered
+    
+    # Add dizimista info to contributions
     for c in contribuicoes:
-        c["dizimista_nome"] = dizimistas_map.get(c.get("dizimista_id"), "Desconhecido")
+        diz = dizimistas_map.get(c.get("dizimista_id"), {})
+        c["dizimista_nome"] = diz.get("nome", "Desconhecido")
+        c["dizimista_status"] = diz.get("status", "")
+        c["dizimista_nota"] = diz.get("nota", "")
     
     return contribuicoes
 
