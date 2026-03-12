@@ -85,6 +85,7 @@ class DizimistaBase(BaseModel):
     numero: str = ""
     complemento: str = ""
     data_nascimento: str = ""
+    nota: str = "Novo"  # Atualizar, Novo, OK
     valor_dizimo: float = 0.0
     data_cadastro: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     ativo: bool = True
@@ -97,6 +98,7 @@ class DizimistaCreate(BaseModel):
     numero: str = ""
     complemento: str = ""
     data_nascimento: str = ""
+    nota: str = "Novo"
     valor_dizimo: float = 0.0
 
 class DizimistaUpdate(BaseModel):
@@ -107,6 +109,7 @@ class DizimistaUpdate(BaseModel):
     numero: Optional[str] = None
     complemento: Optional[str] = None
     data_nascimento: Optional[str] = None
+    nota: Optional[str] = None
     valor_dizimo: Optional[float] = None
     ativo: Optional[bool] = None
 

@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Line, ComposedChart, ReferenceLine } from "recharts";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -418,7 +418,7 @@ const DizimistasPage = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [editingDizimista, setEditingDizimista] = useState(null);
-  const [formData, setFormData] = useState({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", valor_dizimo: 0 });
+  const [formData, setFormData] = useState({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", nota: "Novo", valor_dizimo: 0 });
   const [exportFilters, setExportFilters] = useState({ status: "", mes_aniversario: "" });
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
@@ -466,7 +466,7 @@ const DizimistasPage = () => {
       }
       setDialogOpen(false);
       setEditingDizimista(null);
-      setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", valor_dizimo: 0 });
+      setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", nota: "Novo", valor_dizimo: 0 });
       fetchDizimistas();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Erro ao salvar");
@@ -483,9 +483,24 @@ const DizimistasPage = () => {
       numero: dizimista.numero || "",
       complemento: dizimista.complemento || "",
       data_nascimento: dizimista.data_nascimento || "",
+      nota: dizimista.nota || "Novo",
       valor_dizimo: dizimista.valor_dizimo
     });
     setDialogOpen(true);
+  };
+
+  const handleDeleteFromEdit = async () => {
+    if (!editingDizimista) return;
+    if (!window.confirm("Deseja excluir este dizimista?")) return;
+    try {
+      await axios.delete(`${API}/dizimistas/${editingDizimista.id}`);
+      toast.success("Dizimista excluído!");
+      setDialogOpen(false);
+      setEditingDizimista(null);
+      fetchDizimistas();
+    } catch (error) {
+      toast.error("Erro ao excluir");
+    }
   };
 
   const handleDelete = async (id) => {
@@ -612,7 +627,7 @@ const DizimistasPage = () => {
             </DropdownMenu>
 
             {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", valor_dizimo: 0 }); } }}>
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", nota: "Novo", valor_dizimo: 0 }); } }}>
                 <DialogTrigger asChild>
                   <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
                     <Plus className="w-4 h-4 mr-2" />
@@ -700,18 +715,39 @@ const DizimistasPage = () => {
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="valor_dizimo">Valor do Dízimo (R$)</Label>
-                      <Input
-                        id="valor_dizimo"
-                        data-testid="input-valor"
-                        type="number"
-                        step="0.01"
-                        value={formData.valor_dizimo}
-                        onChange={(e) => setFormData({ ...formData, valor_dizimo: parseFloat(e.target.value) || 0 })}
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="valor_dizimo">Valor do Dízimo (R$)</Label>
+                        <Input
+                          id="valor_dizimo"
+                          data-testid="input-valor"
+                          type="number"
+                          step="0.01"
+                          value={formData.valor_dizimo}
+                          onChange={(e) => setFormData({ ...formData, valor_dizimo: parseFloat(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="nota">Nota</Label>
+                        <Select value={formData.nota} onValueChange={(v) => setFormData({ ...formData, nota: v })}>
+                          <SelectTrigger data-testid="select-nota">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Novo">Novo</SelectItem>
+                            <SelectItem value="Atualizar">Atualizar</SelectItem>
+                            <SelectItem value="OK">OK</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="flex justify-between sm:justify-between">
+                      {editingDizimista && (
+                        <Button type="button" variant="destructive" onClick={handleDeleteFromEdit} data-testid="btn-deletar-dizimista">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir
+                        </Button>
+                      )}
                       <Button type="submit" data-testid="btn-salvar-dizimista">
                         {editingDizimista ? "Atualizar" : "Cadastrar"}
                       </Button>
@@ -808,6 +844,7 @@ const DizimistasPage = () => {
                   <TableHead>Telefone</TableHead>
                   <TableHead>Aniversário</TableHead>
                   <TableHead>Valor Dízimo</TableHead>
+                  <TableHead>Nota</TableHead>
                   <TableHead>Status</TableHead>
                   {canEdit && <TableHead className="text-right">Ações</TableHead>}
                 </TableRow>
@@ -815,13 +852,13 @@ const DizimistasPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={canEdit ? 7 : 6} className="text-center py-8 text-muted-foreground">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : dizimistas.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={canEdit ? 7 : 6} className="text-center py-8 text-muted-foreground">
                       Nenhum dizimista cadastrado
                     </TableCell>
                   </TableRow>
@@ -833,6 +870,18 @@ const DizimistasPage = () => {
                       <TableCell>{formatDate(dizimista.data_nascimento)}</TableCell>
                       <TableCell>
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dizimista.valor_dizimo || 0)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="outline" 
+                          className={
+                            dizimista.nota === "OK" ? "bg-green-100 text-green-700 border-green-300" :
+                            dizimista.nota === "Atualizar" ? "bg-amber-100 text-amber-700 border-amber-300" :
+                            "bg-blue-100 text-blue-700 border-blue-300"
+                          }
+                        >
+                          {dizimista.nota || "Novo"}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={dizimista.ativo ? "default" : "secondary"}>
@@ -871,6 +920,8 @@ const RelatoriosPage = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formData, setFormData] = useState({ mes: "", ano: "", valor: "", observacao: "" });
+  const [filtroMes, setFiltroMes] = useState("");
+  const [filtroAno, setFiltroAno] = useState("");
   const { hasPermission } = useAuth();
 
   const meses = [
@@ -954,18 +1005,25 @@ const RelatoriosPage = () => {
     return meses.find(m => m.value === String(mes))?.label || mes;
   };
 
-  // Prepare chart data - last 12 months
+  // Prepare chart data - last 15 months with average line
   const prepareChartData = () => {
     if (!resumo?.por_mes) return [];
     
     const data = [];
     const today = new Date();
+    let total = 0;
+    let count = 0;
     
-    for (let i = 11; i >= 0; i--) {
+    for (let i = 14; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const mesNome = meses[date.getMonth()].label.substring(0, 3);
       const valor = resumo.por_mes[key] || 0;
+      
+      if (valor > 0) {
+        total += valor;
+        count++;
+      }
       
       data.push({
         mes: `${mesNome}/${date.getFullYear().toString().slice(-2)}`,
@@ -974,11 +1032,27 @@ const RelatoriosPage = () => {
       });
     }
     
-    return data;
+    // Add average to each data point
+    const media = count > 0 ? total / count : 0;
+    data.forEach(d => {
+      d.media = media;
+    });
+    
+    return { data, media };
   };
 
-  const chartData = prepareChartData();
+  const { data: chartData, media: mediaArrecadacao } = prepareChartData() || { data: [], media: 0 };
   const canEdit = hasPermission("relatorios", "edit");
+
+  // Filter contributions by month/year
+  const filteredContribuicoes = contribuicoes.filter(c => {
+    if (!filtroMes && !filtroAno) return true;
+    const data = c.data || "";
+    const [ano, mes] = data.split("-");
+    if (filtroAno && ano !== filtroAno) return false;
+    if (filtroMes && parseInt(mes) !== parseInt(filtroMes)) return false;
+    return true;
+  });
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -986,6 +1060,9 @@ const RelatoriosPage = () => {
         <div className="bg-card border rounded-lg shadow-lg p-3">
           <p className="font-medium">{payload[0].payload.mesCompleto}</p>
           <p className="text-primary font-bold">{formatCurrency(payload[0].value)}</p>
+          {payload[1] && (
+            <p className="text-muted-foreground text-sm">Média: {formatCurrency(payload[1].value)}</p>
+          )}
         </div>
       );
     }
@@ -1112,21 +1189,23 @@ const RelatoriosPage = () => {
               <BarChart3 className="w-5 h-5" />
               Contribuições Mensais
             </CardTitle>
-            <CardDescription>Últimos 12 meses de arrecadação</CardDescription>
+            <CardDescription>
+              Últimos 15 meses de arrecadação {mediaArrecadacao > 0 && `• Média: ${formatCurrency(mediaArrecadacao)}`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[350px] flex items-center justify-center text-muted-foreground">
                 Carregando...
               </div>
             ) : chartData.length > 0 ? (
-              <div className="h-[300px]">
+              <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                  <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
                       dataKey="mes" 
-                      tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                       axisLine={{ stroke: 'hsl(var(--border))' }}
                     />
                     <YAxis 
@@ -1141,11 +1220,20 @@ const RelatoriosPage = () => {
                       radius={[4, 4, 0, 0]}
                       name="Arrecadado"
                     />
-                  </BarChart>
+                    <Line 
+                      type="monotone" 
+                      dataKey="media" 
+                      stroke="#16a34a" 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={false}
+                      name="Média"
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[350px] flex items-center justify-center text-muted-foreground">
                 Nenhum dado disponível
               </div>
             )}
@@ -1204,8 +1292,41 @@ const RelatoriosPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Histórico de Contribuições</CardTitle>
-            <CardDescription>Lista de todas as contribuições registradas</CardDescription>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <CardTitle>Histórico de Contribuições</CardTitle>
+                <CardDescription>Lista de todas as contribuições registradas</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={filtroMes} onValueChange={setFiltroMes}>
+                  <SelectTrigger className="w-[130px]" data-testid="filtro-mes">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos meses</SelectItem>
+                    {meses.map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filtroAno} onValueChange={setFiltroAno}>
+                  <SelectTrigger className="w-[100px]" data-testid="filtro-ano">
+                    <SelectValue placeholder="Ano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos anos</SelectItem>
+                    {anos.map(a => (
+                      <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(filtroMes || filtroAno) && (
+                  <Button variant="ghost" size="sm" onClick={() => { setFiltroMes(""); setFiltroAno(""); }}>
+                    Limpar
+                  </Button>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -1224,14 +1345,14 @@ const RelatoriosPage = () => {
                       Carregando...
                     </TableCell>
                   </TableRow>
-                ) : contribuicoes.length === 0 ? (
+                ) : filteredContribuicoes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      Nenhuma contribuição registrada
+                      Nenhuma contribuição {(filtroMes || filtroAno) ? "encontrada para o período" : "registrada"}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  contribuicoes.map((contrib) => (
+                  filteredContribuicoes.map((contrib) => (
                     <TableRow key={contrib.id}>
                       <TableCell className="font-medium">{contrib.dizimista_nome}</TableCell>
                       <TableCell>{formatCurrency(contrib.valor)}</TableCell>
