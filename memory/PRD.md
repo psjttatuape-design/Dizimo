@@ -27,23 +27,29 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 - [x] Visualização de relatórios (baseado em permissões)
 - [x] Aba de configurações para gerenciar usuários e permissões
 
-## What's Been Implemented (Jan 2026)
-- **Login Page**: Split-screen com logo da Paróquia São Judas Tadeu, cores institucionais (vermelho, dourado, ciano)
-- **Dashboard**: Cards com estatísticas (total dizimistas, arrecadado, contribuições)
-- **Página Dizimistas**: CRUD completo com permissões
-- **Página Relatórios**: 
-  - Resumo com cards (total dizimistas, arrecadado, contribuições)
-  - Gráfico de barras de contribuições mensais (últimos 12 meses) - cor vermelha institucional
-  - Formulário para registrar valores totais de meses anteriores
-  - Tabela de valores mensais registrados
-  - Histórico de contribuições
-- **Aba Configurações**: 
-  - Tab Usuários: Criar, editar, excluir usuários
-  - Tab Permissões: Configurar permissões granulares por usuário
-- **Sidebar**: Gradiente vermelho com logo da paróquia, itens ativos em dourado
-- **Permissões**: dizimistas_view, dizimistas_edit, relatorios_view, relatorios_edit
-- **Credenciais padrão**: admin / admin123
-- **Logo**: https://customer-assets.emergentagent.com/job_permission-manager-8/artifacts/hr97hygf_Logo%20PSJT.jpg
+## What's Been Implemented
+
+### Janeiro 2026 - MVP Inicial
+- Login Page com logo da Paróquia São Judas Tadeu, cores institucionais
+- Dashboard com cards de estatísticas
+- Página Dizimistas com CRUD completo
+- Página Relatórios com gráficos e histórico
+- Aba Configurações para gerenciar usuários e permissões
+- Sistema de permissões granular
+
+### Janeiro 2026 - Melhorias
+- Excel import/export para dizimistas
+- Campo "Nota" editável (Novo, Atualizar, OK)
+- Campo "Status" editável com automação (Ativo, Pendente, Inativo)
+- Filtros avançados na página de Dizimistas (Status, Nota, Aniversário)
+- Refatoração dos campos de endereço (Logradouro, Número, Complemento, CEP)
+- Campo telefone residencial
+- Gráfico de 15 meses com linha de média
+
+### Dezembro 2025 - P0 Features (Atual)
+- **Dashboard Filters**: Filtros de Status, Nota e Mês de Contribuição com contagem de dizimistas
+- **Novos Campos Dizimista**: modo_contribuicao (PIX, Envelope, Depósito) e mes_contribuicao
+- **Exportação com Filtros**: Diálogo mostra filtros ativos, exporta usando mesmos filtros da listagem
 
 ## API Endpoints
 - POST /api/auth/login - Login
@@ -51,15 +57,43 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 - GET/POST/PUT/DELETE /api/users - CRUD usuários (admin only)
 - PUT /api/users/{id}/permissions - Atualizar permissões
 - GET/POST/PUT/DELETE /api/dizimistas - CRUD dizimistas
+- GET /api/dizimistas/template/excel - Template para importação
+- POST /api/dizimistas/import/excel - Importar dizimistas via Excel
+- GET /api/dizimistas/export/excel - Exportar dizimistas (com filtros)
 - GET/POST /api/contribuicoes - Contribuições
 - GET /api/relatorios/resumo - Resumo estatístico
 - GET /api/relatorios/contribuicoes - Lista de contribuições
 - GET/POST/PUT/DELETE /api/valores-mensais - Valores mensais históricos
 
+## Database Schema
+- **users**: id, username, password, name, role, permissions, active, created_at
+- **dizimistas**: id, nome, telefone, telefone_residencial, email, logradouro, numero, complemento, cep, data_nascimento, nota, status, modo_contribuicao, mes_contribuicao, valor_dizimo, data_cadastro, ultima_contribuicao
+- **contribuicoes**: id, dizimista_id, valor, data, observacao
+- **valores_mensais**: id, mes, ano, valor, observacao, created_at
+
+## Credenciais Padrão
+- **Usuário**: admin
+- **Senha**: admin123
+
+## Logo da Paróquia
+https://customer-assets.emergentagent.com/job_permission-manager-8/artifacts/hr97hygf_Logo%20PSJT.jpg
+
 ## Next Tasks / Backlog
-- P1: Exportar relatórios em PDF/Excel
-- P1: Registrar contribuições individuais por dizimista
-- P2: Filtros por período nos relatórios
-- P2: Reset de senha por admin
-- P3: Notificações por email
-- P3: Comparativo ano a ano
+
+### P1 - Alta Prioridade
+- Exportar relatórios em PDF
+- Registrar contribuições individuais por dizimista
+- Cron job para atualização automática de status
+
+### P2 - Média Prioridade  
+- Barra de pesquisa por nome na lista de dizimistas
+- Reset de senha por admin
+- Comparativo ano a ano nos relatórios
+
+### P3 - Baixa Prioridade
+- Notificações por email
+- Relatórios customizados
+
+## Refactoring Needed
+- **Crítico**: frontend/src/App.js tem mais de 2000 linhas - precisa ser dividido em componentes
+- **Alta**: backend/server.py precisa ser modularizado em routers separados
