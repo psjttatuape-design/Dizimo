@@ -418,8 +418,13 @@ const DizimistasPage = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [editingDizimista, setEditingDizimista] = useState(null);
-  const [formData, setFormData] = useState({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 });
+  const [formData, setFormData] = useState({ 
+    nome: "", telefone: "", telefone_residencial: "", email: "", 
+    logradouro: "", numero: "", complemento: "", cep: "",
+    data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 
+  });
   const [exportFilters, setExportFilters] = useState({ status: "", mes_aniversario: "" });
+  const [filtros, setFiltros] = useState({ nota: "", status: "", mes_aniversario: "" });
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
   const { hasPermission } = useAuth();
@@ -441,11 +446,16 @@ const DizimistasPage = () => {
 
   useEffect(() => {
     fetchDizimistas();
-  }, []);
+  }, [filtros]);
 
   const fetchDizimistas = async () => {
     try {
-      const response = await axios.get(`${API}/dizimistas`);
+      let url = `${API}/dizimistas?`;
+      if (filtros.nota && filtros.nota !== "todos") url += `nota=${filtros.nota}&`;
+      if (filtros.status && filtros.status !== "todos") url += `status=${filtros.status}&`;
+      if (filtros.mes_aniversario && filtros.mes_aniversario !== "todos") url += `mes_aniversario=${filtros.mes_aniversario}&`;
+      
+      const response = await axios.get(url);
       setDizimistas(response.data);
     } catch (error) {
       toast.error("Erro ao buscar dizimistas");
@@ -466,7 +476,11 @@ const DizimistasPage = () => {
       }
       setDialogOpen(false);
       setEditingDizimista(null);
-      setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 });
+      setFormData({ 
+        nome: "", telefone: "", telefone_residencial: "", email: "", 
+        logradouro: "", numero: "", complemento: "", cep: "",
+        data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 
+      });
       fetchDizimistas();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Erro ao salvar");
@@ -477,11 +491,13 @@ const DizimistasPage = () => {
     setEditingDizimista(dizimista);
     setFormData({
       nome: dizimista.nome,
-      telefone: dizimista.telefone,
-      email: dizimista.email,
-      endereco: dizimista.endereco,
+      telefone: dizimista.telefone || "",
+      telefone_residencial: dizimista.telefone_residencial || "",
+      email: dizimista.email || "",
+      logradouro: dizimista.logradouro || dizimista.endereco || "",
       numero: dizimista.numero || "",
       complemento: dizimista.complemento || "",
+      cep: dizimista.cep || "",
       data_nascimento: dizimista.data_nascimento || "",
       nota: dizimista.nota || "Novo",
       status: dizimista.status || "Ativo",
@@ -628,14 +644,14 @@ const DizimistasPage = () => {
             </DropdownMenu>
 
             {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", email: "", endereco: "", numero: "", complemento: "", data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 }); } }}>
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 }); } }}>
                 <DialogTrigger asChild>
                   <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
                     <Plus className="w-4 h-4 mr-2" />
                     Novo Dizimista
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>{editingDizimista ? "Editar Dizimista" : "Novo Dizimista"}</DialogTitle>
                     <DialogDescription>Preencha os dados do dizimista</DialogDescription>
@@ -651,14 +667,25 @@ const DizimistasPage = () => {
                         required
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="telefone">Telefone</Label>
+                        <Label htmlFor="telefone">Celular</Label>
                         <Input
                           id="telefone"
                           data-testid="input-telefone"
                           value={formData.telefone}
                           onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                          placeholder="(11) 99999-9999"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="telefone_residencial">Tel. Residencial</Label>
+                        <Input
+                          id="telefone_residencial"
+                          data-testid="input-telefone-res"
+                          value={formData.telefone_residencial}
+                          onChange={(e) => setFormData({ ...formData, telefone_residencial: e.target.value })}
+                          placeholder="(11) 2222-3333"
                         />
                       </div>
                       <div className="space-y-2">
@@ -672,14 +699,14 @@ const DizimistasPage = () => {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-6 gap-4">
-                      <div className="col-span-4 space-y-2">
-                        <Label htmlFor="endereco">Endereço</Label>
+                    <div className="grid grid-cols-12 gap-4">
+                      <div className="col-span-6 space-y-2">
+                        <Label htmlFor="logradouro">Logradouro</Label>
                         <Input
-                          id="endereco"
-                          data-testid="input-endereco"
-                          value={formData.endereco}
-                          onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
+                          id="logradouro"
+                          data-testid="input-logradouro"
+                          value={formData.logradouro}
+                          onChange={(e) => setFormData({ ...formData, logradouro: e.target.value })}
                           placeholder="Rua, Avenida..."
                         />
                       </div>
@@ -690,7 +717,16 @@ const DizimistasPage = () => {
                           data-testid="input-numero"
                           value={formData.numero}
                           onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                          placeholder="Nº"
+                        />
+                      </div>
+                      <div className="col-span-4 space-y-2">
+                        <Label htmlFor="cep">CEP</Label>
+                        <Input
+                          id="cep"
+                          data-testid="input-cep"
+                          value={formData.cep}
+                          onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                          placeholder="00000-000"
                         />
                       </div>
                     </div>
@@ -716,9 +752,9 @@ const DizimistasPage = () => {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="valor_dizimo">Valor do Dízimo (R$)</Label>
+                        <Label htmlFor="valor_dizimo">Valor Dízimo (R$)</Label>
                         <Input
                           id="valor_dizimo"
                           data-testid="input-valor"
@@ -772,6 +808,59 @@ const DizimistasPage = () => {
             )}
           </div>
         </div>
+
+        {/* Filtros */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">Filtrar por:</Label>
+              </div>
+              <Select value={filtros.status} onValueChange={(v) => setFiltros({...filtros, status: v})}>
+                <SelectTrigger className="w-[130px]" data-testid="filtro-status-diz">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos Status</SelectItem>
+                  <SelectItem value="Ativo">Ativo</SelectItem>
+                  <SelectItem value="Pendente">Pendente</SelectItem>
+                  <SelectItem value="Inativo">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filtros.nota} onValueChange={(v) => setFiltros({...filtros, nota: v})}>
+                <SelectTrigger className="w-[130px]" data-testid="filtro-nota-diz">
+                  <SelectValue placeholder="Nota" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas Notas</SelectItem>
+                  <SelectItem value="Novo">Novo</SelectItem>
+                  <SelectItem value="Atualizar">Atualizar</SelectItem>
+                  <SelectItem value="OK">OK</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filtros.mes_aniversario} onValueChange={(v) => setFiltros({...filtros, mes_aniversario: v})}>
+                <SelectTrigger className="w-[150px]" data-testid="filtro-aniversario-diz">
+                  <SelectValue placeholder="Aniversário" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Meses</SelectItem>
+                  {meses.map(m => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(filtros.status || filtros.nota || filtros.mes_aniversario) && 
+               (filtros.status !== "todos" || filtros.nota !== "todos" || filtros.mes_aniversario !== "todos") && (
+                <Button variant="ghost" size="sm" onClick={() => setFiltros({ nota: "", status: "", mes_aniversario: "" })}>
+                  Limpar
+                </Button>
+              )}
+              <div className="ml-auto text-sm text-muted-foreground">
+                {dizimistas.length} dizimista(s) encontrado(s)
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Import Dialog */}
         <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
@@ -974,18 +1063,14 @@ const RelatoriosPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchContribuicoes();
+    fetchResumoEContribuicoes();
   }, [filtros]);
 
   const fetchData = async () => {
     try {
-      const [resumoRes, valoresRes] = await Promise.all([
-        axios.get(`${API}/relatorios/resumo`),
-        axios.get(`${API}/valores-mensais`)
-      ]);
-      setResumo(resumoRes.data);
+      const valoresRes = await axios.get(`${API}/valores-mensais`);
       setValoresMensais(valoresRes.data);
-      await fetchContribuicoes();
+      await fetchResumoEContribuicoes();
     } catch (error) {
       toast.error("Erro ao buscar relatórios");
     } finally {
@@ -993,20 +1078,25 @@ const RelatoriosPage = () => {
     }
   };
 
-  const fetchContribuicoes = async () => {
+  const fetchResumoEContribuicoes = async () => {
     try {
-      let url = `${API}/relatorios/contribuicoes?`;
-      if (filtros.mesInicio) url += `mes_inicio=${filtros.mesInicio}&`;
-      if (filtros.anoInicio) url += `ano_inicio=${filtros.anoInicio}&`;
-      if (filtros.mesFim) url += `mes_fim=${filtros.mesFim}&`;
-      if (filtros.anoFim) url += `ano_fim=${filtros.anoFim}&`;
-      if (filtros.status && filtros.status !== "todos") url += `status=${filtros.status}&`;
-      if (filtros.nota && filtros.nota !== "todos") url += `nota=${filtros.nota}&`;
+      let baseParams = "";
+      if (filtros.mesInicio) baseParams += `mes_inicio=${filtros.mesInicio}&`;
+      if (filtros.anoInicio) baseParams += `ano_inicio=${filtros.anoInicio}&`;
+      if (filtros.mesFim) baseParams += `mes_fim=${filtros.mesFim}&`;
+      if (filtros.anoFim) baseParams += `ano_fim=${filtros.anoFim}&`;
+      if (filtros.status && filtros.status !== "todos") baseParams += `status=${filtros.status}&`;
+      if (filtros.nota && filtros.nota !== "todos") baseParams += `nota=${filtros.nota}&`;
       
-      const response = await axios.get(url);
-      setContribuicoes(response.data);
+      const [resumoRes, contribRes] = await Promise.all([
+        axios.get(`${API}/relatorios/resumo?${baseParams}`),
+        axios.get(`${API}/relatorios/contribuicoes?${baseParams}`)
+      ]);
+      
+      setResumo(resumoRes.data);
+      setContribuicoes(contribRes.data);
     } catch (error) {
-      console.error("Erro ao buscar contribuições filtradas");
+      console.error("Erro ao buscar dados filtrados");
     }
   };
 

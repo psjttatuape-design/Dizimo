@@ -80,10 +80,12 @@ class DizimistaBase(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     nome: str
     telefone: str = ""
+    telefone_residencial: str = ""
     email: str = ""
-    endereco: str = ""
+    logradouro: str = ""
     numero: str = ""
     complemento: str = ""
+    cep: str = ""
     data_nascimento: str = ""
     nota: str = "Novo"  # Atualizar, Novo, OK
     status: str = "Ativo"  # Ativo, Pendente, Inativo
@@ -94,10 +96,12 @@ class DizimistaBase(BaseModel):
 class DizimistaCreate(BaseModel):
     nome: str
     telefone: str = ""
+    telefone_residencial: str = ""
     email: str = ""
-    endereco: str = ""
+    logradouro: str = ""
     numero: str = ""
     complemento: str = ""
+    cep: str = ""
     data_nascimento: str = ""
     nota: str = "Novo"
     status: str = "Ativo"
@@ -106,10 +110,12 @@ class DizimistaCreate(BaseModel):
 class DizimistaUpdate(BaseModel):
     nome: Optional[str] = None
     telefone: Optional[str] = None
+    telefone_residencial: Optional[str] = None
     email: Optional[str] = None
-    endereco: Optional[str] = None
+    logradouro: Optional[str] = None
     numero: Optional[str] = None
     complemento: Optional[str] = None
+    cep: Optional[str] = None
     data_nascimento: Optional[str] = None
     nota: Optional[str] = None
     status: Optional[str] = None
@@ -329,17 +335,17 @@ async def download_template(current_user: dict = Depends(get_current_user)):
         top=Side(style='thin'), bottom=Side(style='thin')
     )
     
-    headers = ["Nome*", "Telefone", "Email", "Endereço", "Número", "Complemento", "Data Nascimento (DD/MM/AAAA)", "Valor Dízimo"]
+    headers = ["Nome*", "Telefone Celular", "Telefone Residencial", "Email", "Logradouro", "Número", "Complemento", "CEP", "Data Nascimento (DD/MM/AAAA)", "Valor Dízimo"]
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = header_align
         cell.border = thin_border
-        ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 20
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 18
     
     # Example row
-    example = ["João da Silva", "(11) 99999-9999", "joao@email.com", "Rua das Flores", "123", "Apto 45", "15/06/1980", "100.00"]
+    example = ["João da Silva", "(11) 99999-9999", "(11) 2222-3333", "joao@email.com", "Rua das Flores", "123", "Apto 45", "03456-000", "15/06/1980", "100.00"]
     for col, value in enumerate(example, 1):
         cell = ws.cell(row=2, column=col, value=value)
         cell.border = thin_border
@@ -375,33 +381,37 @@ async def import_dizimistas_excel(file: UploadFile = File(...), current_user: di
             continue
         
         try:
-            # Parse date
+            # Parse date (column 8 now)
             data_nasc = ""
-            if row[6]:
-                if isinstance(row[6], datetime):
-                    data_nasc = row[6].strftime("%Y-%m-%d")
+            if len(row) > 8 and row[8]:
+                if isinstance(row[8], datetime):
+                    data_nasc = row[8].strftime("%Y-%m-%d")
                 else:
-                    parts = str(row[6]).split("/")
+                    parts = str(row[8]).split("/")
                     if len(parts) == 3:
                         data_nasc = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
             
-            # Parse valor
+            # Parse valor (column 9 now)
             valor = 0.0
-            if row[7]:
-                valor = float(str(row[7]).replace(",", "."))
+            if len(row) > 9 and row[9]:
+                valor = float(str(row[9]).replace(",", "."))
             
             dizimista = {
                 "id": str(uuid.uuid4()),
                 "nome": str(row[0]).strip(),
                 "telefone": str(row[1] or "").strip(),
-                "email": str(row[2] or "").strip(),
-                "endereco": str(row[3] or "").strip(),
-                "numero": str(row[4] or "").strip(),
-                "complemento": str(row[5] or "").strip(),
+                "telefone_residencial": str(row[2] or "").strip(),
+                "email": str(row[3] or "").strip(),
+                "logradouro": str(row[4] or "").strip(),
+                "numero": str(row[5] or "").strip(),
+                "complemento": str(row[6] or "").strip(),
+                "cep": str(row[7] or "").strip(),
                 "data_nascimento": data_nasc,
+                "nota": "Novo",
+                "status": "Ativo",
                 "valor_dizimo": valor,
                 "data_cadastro": datetime.now(timezone.utc).isoformat(),
-                "ativo": True
+                "ultima_contribuicao": ""
             }
             await db.dizimistas.insert_one(dizimista)
             imported += 1
@@ -516,10 +526,36 @@ async def export_dizimistas_excel(
     )
 
 @api_router.get("/dizimistas")
-async def list_dizimistas(current_user: dict = Depends(get_current_user)):
+async def list_dizimistas(
+    nota: Optional[str] = None,
+    status: Optional[str] = None,
+    mes_aniversario: Optional[int] = None,
+    current_user: dict = Depends(get_current_user)
+):
     if not check_permission(current_user, "dizimistas", "view"):
         raise HTTPException(status_code=403, detail="Sem permissão para visualizar dizimistas")
-    dizimistas = await db.dizimistas.find({}, {"_id": 0}).to_list(1000)
+    
+    query = {}
+    if nota and nota != "todos":
+        query["nota"] = nota
+    if status and status != "todos":
+        query["status"] = status
+    
+    dizimistas = await db.dizimistas.find(query, {"_id": 0}).to_list(10000)
+    
+    # Filter by birthday month
+    if mes_aniversario:
+        filtered = []
+        for d in dizimistas:
+            if d.get("data_nascimento"):
+                try:
+                    parts = d["data_nascimento"].split("-")
+                    if len(parts) >= 2 and int(parts[1]) == mes_aniversario:
+                        filtered.append(d)
+                except:
+                    pass
+        dizimistas = filtered
+    
     return dizimistas
 
 @api_router.post("/dizimistas")
@@ -637,21 +673,55 @@ async def trigger_status_update(current_user: dict = Depends(get_current_user)):
 
 # Relatorios Routes
 @api_router.get("/relatorios/resumo")
-async def get_resumo(current_user: dict = Depends(get_current_user)):
+async def get_resumo(
+    mes_inicio: Optional[str] = None,
+    ano_inicio: Optional[str] = None,
+    mes_fim: Optional[str] = None,
+    ano_fim: Optional[str] = None,
+    status: Optional[str] = None,
+    nota: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     if not check_permission(current_user, "relatorios", "view"):
         raise HTTPException(status_code=403, detail="Sem permissão para visualizar relatórios")
     
-    total_dizimistas = await db.dizimistas.count_documents({"status": "Ativo"})
-    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(1000)
-    valores_mensais = await db.valores_mensais.find({}, {"_id": 0}).to_list(1000)
+    # Get dizimistas with optional filters
+    diz_query = {}
+    if status and status != "todos":
+        diz_query["status"] = status
+    if nota and nota != "todos":
+        diz_query["nota"] = nota
+    
+    dizimistas = await db.dizimistas.find(diz_query, {"_id": 0}).to_list(10000)
+    dizimistas_ids = set(d["id"] for d in dizimistas)
+    total_dizimistas = len([d for d in dizimistas if d.get("status") == "Ativo"])
+    
+    # Get contributions
+    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(10000)
+    valores_mensais = await db.valores_mensais.find({}, {"_id": 0}).to_list(10000)
+    
+    # Filter contributions by dizimista (if status/nota filters applied)
+    if status or nota:
+        contribuicoes = [c for c in contribuicoes if c.get("dizimista_id") in dizimistas_ids]
+    
+    # Filter by period
+    if ano_inicio and mes_inicio:
+        data_inicio = f"{ano_inicio}-{mes_inicio.zfill(2)}"
+        contribuicoes = [c for c in contribuicoes if c.get("data", "")[:7] >= data_inicio]
+        valores_mensais = [v for v in valores_mensais if f"{v.get('ano')}-{str(v.get('mes')).zfill(2)}" >= data_inicio]
+    
+    if ano_fim and mes_fim:
+        data_fim = f"{ano_fim}-{mes_fim.zfill(2)}"
+        contribuicoes = [c for c in contribuicoes if c.get("data", "")[:7] <= data_fim]
+        valores_mensais = [v for v in valores_mensais if f"{v.get('ano')}-{str(v.get('mes')).zfill(2)}" <= data_fim]
     
     total_arrecadado = sum(c.get("valor", 0) for c in contribuicoes)
     total_arrecadado += sum(v.get("valor", 0) for v in valores_mensais)
     
-    # Monthly breakdown - combine contributions and manual monthly values
+    # Monthly breakdown
     monthly = {}
     for c in contribuicoes:
-        data = c.get("data", "")[:7]  # YYYY-MM
+        data = c.get("data", "")[:7]
         if data:
             monthly[data] = monthly.get(data, 0) + c.get("valor", 0)
     
