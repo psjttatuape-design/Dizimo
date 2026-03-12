@@ -89,6 +89,8 @@ class DizimistaBase(BaseModel):
     data_nascimento: str = ""
     nota: str = "Novo"  # Atualizar, Novo, OK
     status: str = "Ativo"  # Ativo, Pendente, Inativo
+    modo_contribuicao: str = ""  # PIX, Envelope, Depósito
+    mes_contribuicao: str = ""  # Mês preferencial de contribuição
     valor_dizimo: float = 0.0
     data_cadastro: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     ultima_contribuicao: str = ""
@@ -105,6 +107,8 @@ class DizimistaCreate(BaseModel):
     data_nascimento: str = ""
     nota: str = "Novo"
     status: str = "Ativo"
+    modo_contribuicao: str = ""
+    mes_contribuicao: str = ""
     valor_dizimo: float = 0.0
 
 class DizimistaUpdate(BaseModel):
@@ -119,6 +123,8 @@ class DizimistaUpdate(BaseModel):
     data_nascimento: Optional[str] = None
     nota: Optional[str] = None
     status: Optional[str] = None
+    modo_contribuicao: Optional[str] = None
+    mes_contribuicao: Optional[str] = None
     valor_dizimo: Optional[float] = None
 
 class ContribuicaoBase(BaseModel):
@@ -423,6 +429,7 @@ async def import_dizimistas_excel(file: UploadFile = File(...), current_user: di
 @api_router.get("/dizimistas/export/excel")
 async def export_dizimistas_excel(
     status: Optional[str] = None,
+    nota: Optional[str] = None,
     mes_aniversario: Optional[int] = None,
     current_user: dict = Depends(get_current_user)
 ):
@@ -430,10 +437,10 @@ async def export_dizimistas_excel(
         raise HTTPException(status_code=403, detail="Sem permissão")
     
     query = {}
-    if status == "ativo":
-        query["ativo"] = True
-    elif status == "inativo":
-        query["ativo"] = False
+    if status and status != "todos":
+        query["status"] = status
+    if nota and nota != "todos":
+        query["nota"] = nota
     
     dizimistas = await db.dizimistas.find(query, {"_id": 0}).to_list(10000)
     
@@ -463,7 +470,7 @@ async def export_dizimistas_excel(
         top=Side(style='thin'), bottom=Side(style='thin')
     )
     
-    headers = ["Nome", "Telefone", "Email", "Endereço", "Nº", "Complemento", "Aniversário", "Valor Dízimo", "Status"]
+    headers = ["Nome", "Celular", "Tel. Residencial", "Email", "Logradouro", "Nº", "Complemento", "CEP", "Aniversário", "Nota", "Status", "Modo Contrib.", "Valor Dízimo"]
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = header_font
@@ -473,13 +480,17 @@ async def export_dizimistas_excel(
     
     ws.column_dimensions['A'].width = 30
     ws.column_dimensions['B'].width = 15
-    ws.column_dimensions['C'].width = 25
-    ws.column_dimensions['D'].width = 30
-    ws.column_dimensions['E'].width = 8
-    ws.column_dimensions['F'].width = 15
-    ws.column_dimensions['G'].width = 12
+    ws.column_dimensions['C'].width = 15
+    ws.column_dimensions['D'].width = 25
+    ws.column_dimensions['E'].width = 30
+    ws.column_dimensions['F'].width = 8
+    ws.column_dimensions['G'].width = 15
     ws.column_dimensions['H'].width = 12
-    ws.column_dimensions['I'].width = 10
+    ws.column_dimensions['I'].width = 12
+    ws.column_dimensions['J'].width = 10
+    ws.column_dimensions['K'].width = 10
+    ws.column_dimensions['L'].width = 12
+    ws.column_dimensions['M'].width = 12
     
     for row_num, d in enumerate(dizimistas, 2):
         # Format birthday
@@ -495,13 +506,17 @@ async def export_dizimistas_excel(
         values = [
             d.get("nome", ""),
             d.get("telefone", ""),
+            d.get("telefone_residencial", ""),
             d.get("email", ""),
-            d.get("endereco", ""),
+            d.get("logradouro", d.get("endereco", "")),
             d.get("numero", ""),
             d.get("complemento", ""),
+            d.get("cep", ""),
             aniversario,
-            d.get("valor_dizimo", 0),
-            "Ativo" if d.get("ativo", True) else "Inativo"
+            d.get("nota", ""),
+            d.get("status", "Ativo"),
+            d.get("modo_contribuicao", ""),
+            d.get("valor_dizimo", 0)
         ]
         for col, value in enumerate(values, 1):
             cell = ws.cell(row=row_num, column=col, value=value)
@@ -512,8 +527,10 @@ async def export_dizimistas_excel(
     output.seek(0)
     
     filename = "lista_dizimistas"
-    if status:
+    if status and status != "todos":
         filename += f"_{status}"
+    if nota and nota != "todos":
+        filename += f"_{nota}"
     if mes_aniversario:
         meses = ["", "janeiro", "fevereiro", "marco", "abril", "maio", "junho", 
                  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]

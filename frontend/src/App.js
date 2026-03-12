@@ -329,21 +329,57 @@ const Layout = ({ children }) => {
 // Dashboard
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
+  const [dizimistas, setDizimistas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filtros, setFiltros] = useState({ nota: "", status: "", mes_contribuicao: "" });
   const { hasPermission } = useAuth();
+
+  const meses = [
+    { value: "1", label: "Janeiro" },
+    { value: "2", label: "Fevereiro" },
+    { value: "3", label: "Março" },
+    { value: "4", label: "Abril" },
+    { value: "5", label: "Maio" },
+    { value: "6", label: "Junho" },
+    { value: "7", label: "Julho" },
+    { value: "8", label: "Agosto" },
+    { value: "9", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" }
+  ];
 
   useEffect(() => {
     if (hasPermission("relatorios", "view")) {
-      fetchStats();
+      fetchData();
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [filtros]);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
-      const response = await axios.get(`${API}/relatorios/resumo`);
-      setStats(response.data);
+      setLoading(true);
+      // Fetch stats
+      const statsRes = await axios.get(`${API}/relatorios/resumo`);
+      setStats(statsRes.data);
+      
+      // Fetch dizimistas with filters
+      let url = `${API}/dizimistas?`;
+      if (filtros.nota && filtros.nota !== "todos") url += `nota=${filtros.nota}&`;
+      if (filtros.status && filtros.status !== "todos") url += `status=${filtros.status}&`;
+      
+      const dizRes = await axios.get(url);
+      let filteredDizimistas = dizRes.data;
+      
+      // Filter by mes_contribuicao on client side
+      if (filtros.mes_contribuicao && filtros.mes_contribuicao !== "todos") {
+        filteredDizimistas = filteredDizimistas.filter(d => 
+          d.mes_contribuicao === filtros.mes_contribuicao
+        );
+      }
+      
+      setDizimistas(filteredDizimistas);
     } catch (error) {
       console.error("Erro ao buscar estatísticas");
     } finally {
@@ -355,6 +391,13 @@ const Dashboard = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
   };
 
+  const temFiltrosAtivos = (filtros.nota && filtros.nota !== "todos") || 
+    (filtros.status && filtros.status !== "todos") || 
+    (filtros.mes_contribuicao && filtros.mes_contribuicao !== "todos");
+
+  // Calculate contribution count based on filtered dizimistas
+  const contributionCount = dizimistas.length;
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -364,40 +407,128 @@ const Dashboard = () => {
         </div>
 
         {hasPermission("relatorios", "view") ? (
-          <div className="bento-grid">
-            <Card className="animate-fade-in" data-testid="card-dizimistas">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Dizimistas</CardTitle>
-                <UserCheck className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{loading ? "-" : stats?.total_dizimistas || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Membros ativos</p>
-              </CardContent>
-            </Card>
+          <>
+            <div className="bento-grid">
+              <Card className="animate-fade-in" data-testid="card-dizimistas">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Dizimistas</CardTitle>
+                  <UserCheck className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{loading ? "-" : stats?.total_dizimistas || 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Membros ativos</p>
+                </CardContent>
+              </Card>
 
-            <Card className="animate-fade-in animate-delay-100" data-testid="card-arrecadado">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado</CardTitle>
-                <DollarSign className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(stats?.total_arrecadado)}</div>
-                <p className="text-xs text-muted-foreground mt-1">Todas as contribuições</p>
-              </CardContent>
-            </Card>
+              <Card className="animate-fade-in animate-delay-100" data-testid="card-arrecadado">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado</CardTitle>
+                  <DollarSign className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(stats?.total_arrecadado)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Todas as contribuições</p>
+                </CardContent>
+              </Card>
 
-            <Card className="animate-fade-in animate-delay-200" data-testid="card-contribuicoes">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Contribuições</CardTitle>
-                <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              <Card className="animate-fade-in animate-delay-200" data-testid="card-contribuicoes">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Contribuições</CardTitle>
+                  <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{loading ? "-" : stats?.total_contribuicoes || 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Registros no sistema</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Dashboard Filters Section */}
+            <Card data-testid="card-filtros-dashboard">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      Filtros de Dizimistas
+                    </CardTitle>
+                    <CardDescription>Filtre por nota, status ou mês de contribuição</CardDescription>
+                  </div>
+                  {temFiltrosAtivos && (
+                    <Button variant="ghost" size="sm" onClick={() => setFiltros({ nota: "", status: "", mes_contribuicao: "" })}>
+                      Limpar Filtros
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{loading ? "-" : stats?.total_contribuicoes || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Registros no sistema</p>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground whitespace-nowrap">Filtrar por:</Label>
+                  </div>
+                  <Select value={filtros.status} onValueChange={(v) => setFiltros({...filtros, status: v})}>
+                    <SelectTrigger className="w-[130px]" data-testid="filtro-status-dash">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos Status</SelectItem>
+                      <SelectItem value="Ativo">Ativo</SelectItem>
+                      <SelectItem value="Pendente">Pendente</SelectItem>
+                      <SelectItem value="Inativo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filtros.nota} onValueChange={(v) => setFiltros({...filtros, nota: v})}>
+                    <SelectTrigger className="w-[130px]" data-testid="filtro-nota-dash">
+                      <SelectValue placeholder="Nota" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas Notas</SelectItem>
+                      <SelectItem value="Novo">Novo</SelectItem>
+                      <SelectItem value="Atualizar">Atualizar</SelectItem>
+                      <SelectItem value="OK">OK</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filtros.mes_contribuicao} onValueChange={(v) => setFiltros({...filtros, mes_contribuicao: v})}>
+                    <SelectTrigger className="w-[180px]" data-testid="filtro-mes-dash">
+                      <SelectValue placeholder="Mês Contribuição" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os Meses</SelectItem>
+                      {meses.map(m => (
+                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Results Card */}
+                <div className="mt-6 bg-muted/50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Dizimistas encontrados</p>
+                      <p className="text-3xl font-bold">{loading ? "-" : contributionCount}</p>
+                    </div>
+                    {temFiltrosAtivos && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Filtros aplicados:</p>
+                        <div className="flex gap-2 mt-1">
+                          {filtros.status && filtros.status !== "todos" && (
+                            <Badge variant="outline">{filtros.status}</Badge>
+                          )}
+                          {filtros.nota && filtros.nota !== "todos" && (
+                            <Badge variant="outline">{filtros.nota}</Badge>
+                          )}
+                          {filtros.mes_contribuicao && filtros.mes_contribuicao !== "todos" && (
+                            <Badge variant="outline">{meses.find(m => m.value === filtros.mes_contribuicao)?.label}</Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          </div>
+          </>
         ) : (
           <Card>
             <CardContent className="py-12 text-center">
@@ -421,9 +552,9 @@ const DizimistasPage = () => {
   const [formData, setFormData] = useState({ 
     nome: "", telefone: "", telefone_residencial: "", email: "", 
     logradouro: "", numero: "", complemento: "", cep: "",
-    data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 
+    data_nascimento: "", nota: "Novo", status: "Ativo", 
+    modo_contribuicao: "", mes_contribuicao: "", valor_dizimo: 0 
   });
-  const [exportFilters, setExportFilters] = useState({ status: "", mes_aniversario: "" });
   const [filtros, setFiltros] = useState({ nota: "", status: "", mes_aniversario: "" });
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
@@ -479,7 +610,8 @@ const DizimistasPage = () => {
       setFormData({ 
         nome: "", telefone: "", telefone_residencial: "", email: "", 
         logradouro: "", numero: "", complemento: "", cep: "",
-        data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 
+        data_nascimento: "", nota: "Novo", status: "Ativo", 
+        modo_contribuicao: "", mes_contribuicao: "", valor_dizimo: 0 
       });
       fetchDizimistas();
     } catch (error) {
@@ -501,6 +633,8 @@ const DizimistasPage = () => {
       data_nascimento: dizimista.data_nascimento || "",
       nota: dizimista.nota || "Novo",
       status: dizimista.status || "Ativo",
+      modo_contribuicao: dizimista.modo_contribuicao || "",
+      mes_contribuicao: dizimista.mes_contribuicao || "",
       valor_dizimo: dizimista.valor_dizimo
     });
     setDialogOpen(true);
@@ -576,8 +710,10 @@ const DizimistasPage = () => {
   const exportList = async () => {
     try {
       let url = `${API}/dizimistas/export/excel?`;
-      if (exportFilters.status) url += `status=${exportFilters.status}&`;
-      if (exportFilters.mes_aniversario) url += `mes_aniversario=${exportFilters.mes_aniversario}`;
+      // Usa os mesmos filtros da listagem
+      if (filtros.status && filtros.status !== "todos") url += `status=${filtros.status}&`;
+      if (filtros.nota && filtros.nota !== "todos") url += `nota=${filtros.nota}&`;
+      if (filtros.mes_aniversario && filtros.mes_aniversario !== "todos") url += `mes_aniversario=${filtros.mes_aniversario}&`;
       
       const response = await axios.get(url, { responseType: 'blob' });
       const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
@@ -588,7 +724,6 @@ const DizimistasPage = () => {
       link.click();
       link.remove();
       toast.success("Lista exportada!");
-      setExportDialogOpen(false);
     } catch (error) {
       toast.error("Erro ao exportar");
     }
@@ -644,7 +779,7 @@ const DizimistasPage = () => {
             </DropdownMenu>
 
             {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", nota: "Novo", status: "Ativo", valor_dizimo: 0 }); } }}>
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", nota: "Novo", status: "Ativo", modo_contribuicao: "", mes_contribuicao: "", valor_dizimo: 0 }); } }}>
                 <DialogTrigger asChild>
                   <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
                     <Plus className="w-4 h-4 mr-2" />
@@ -764,6 +899,36 @@ const DizimistasPage = () => {
                           onChange={(e) => setFormData({ ...formData, valor_dizimo: parseFloat(e.target.value) || 0 })}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="modo_contribuicao">Modo Contribuição</Label>
+                        <Select value={formData.modo_contribuicao || "nenhum"} onValueChange={(v) => setFormData({ ...formData, modo_contribuicao: v === "nenhum" ? "" : v })}>
+                          <SelectTrigger data-testid="select-modo">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nenhum">Selecione</SelectItem>
+                            <SelectItem value="PIX">PIX</SelectItem>
+                            <SelectItem value="Envelope">Envelope</SelectItem>
+                            <SelectItem value="Depósito">Depósito</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mes_contribuicao">Mês Contribuição</Label>
+                        <Select value={formData.mes_contribuicao || "nenhum"} onValueChange={(v) => setFormData({ ...formData, mes_contribuicao: v === "nenhum" ? "" : v })}>
+                          <SelectTrigger data-testid="select-mes-contrib">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nenhum">Selecione</SelectItem>
+                            {meses.map(m => (
+                              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="nota">Nota</Label>
                         <Select value={formData.nota} onValueChange={(v) => setFormData({ ...formData, nota: v })}>
@@ -892,45 +1057,31 @@ const DizimistasPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Export Dialog */}
+        {/* Export Dialog - Usa os mesmos filtros da listagem */}
         <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Exportar Lista de Dizimistas</DialogTitle>
-              <DialogDescription>Selecione os filtros para a lista</DialogDescription>
+              <DialogDescription>A exportação usará os mesmos filtros aplicados na listagem atual</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={exportFilters.status} onValueChange={(v) => setExportFilters({ ...exportFilters, status: v })}>
-                  <SelectTrigger data-testid="select-status-export">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="ativo">Apenas Ativos</SelectItem>
-                    <SelectItem value="inativo">Apenas Inativos</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="bg-muted p-4 rounded-lg">
+                <p className="text-sm font-medium mb-2">Filtros ativos:</p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>Status: {filtros.status && filtros.status !== "todos" ? filtros.status : "Todos"}</li>
+                  <li>Nota: {filtros.nota && filtros.nota !== "todos" ? filtros.nota : "Todas"}</li>
+                  <li>Aniversário: {filtros.mes_aniversario && filtros.mes_aniversario !== "todos" 
+                    ? meses.find(m => m.value === filtros.mes_aniversario)?.label || "Todos" 
+                    : "Todos os meses"}</li>
+                </ul>
               </div>
-              <div className="space-y-2">
-                <Label>Mês de Aniversário</Label>
-                <Select value={exportFilters.mes_aniversario} onValueChange={(v) => setExportFilters({ ...exportFilters, mes_aniversario: v })}>
-                  <SelectTrigger data-testid="select-mes-export">
-                    <SelectValue placeholder="Todos os meses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os meses</SelectItem>
-                    {meses.map(m => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Total de {dizimistas.length} dizimista(s) será(ão) exportado(s).
+              </p>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setExportDialogOpen(false)}>Cancelar</Button>
-              <Button onClick={exportList} data-testid="btn-confirmar-export">
+              <Button onClick={() => { exportList(); setExportDialogOpen(false); }} data-testid="btn-confirmar-export">
                 <Download className="w-4 h-4 mr-2" />
                 Exportar Excel
               </Button>
