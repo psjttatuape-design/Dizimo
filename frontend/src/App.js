@@ -553,7 +553,7 @@ const DizimistasPage = () => {
     nome: "", telefone: "", telefone_residencial: "", email: "", 
     logradouro: "", numero: "", complemento: "", cep: "",
     data_nascimento: "", nota: "Novo", status: "Ativo", 
-    modo_contribuicao: "", mes_contribuicao: "", valor_dizimo: 0 
+    modo_contribuicao: "", mes_contribuicao: "", comunicacao: "", valor_dizimo: 0 
   });
   const [filtros, setFiltros] = useState({ nota: "", status: "", mes_aniversario: "" });
   const [importing, setImporting] = useState(false);
@@ -611,7 +611,7 @@ const DizimistasPage = () => {
         nome: "", telefone: "", telefone_residencial: "", email: "", 
         logradouro: "", numero: "", complemento: "", cep: "",
         data_nascimento: "", nota: "Novo", status: "Ativo", 
-        modo_contribuicao: "", mes_contribuicao: "", valor_dizimo: 0 
+        modo_contribuicao: "", mes_contribuicao: "", comunicacao: "", valor_dizimo: 0 
       });
       fetchDizimistas();
     } catch (error) {
@@ -635,6 +635,7 @@ const DizimistasPage = () => {
       status: dizimista.status || "Ativo",
       modo_contribuicao: dizimista.modo_contribuicao || "",
       mes_contribuicao: dizimista.mes_contribuicao || "",
+      comunicacao: dizimista.comunicacao || "",
       valor_dizimo: dizimista.valor_dizimo
     });
     setDialogOpen(true);
@@ -779,7 +780,7 @@ const DizimistasPage = () => {
             </DropdownMenu>
 
             {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", nota: "Novo", status: "Ativo", modo_contribuicao: "", mes_contribuicao: "", valor_dizimo: 0 }); } }}>
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", nota: "Novo", status: "Ativo", modo_contribuicao: "", mes_contribuicao: "", comunicacao: "", valor_dizimo: 0 }); } }}>
                 <DialogTrigger asChild>
                   <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
                     <Plus className="w-4 h-4 mr-2" />
@@ -924,6 +925,20 @@ const DizimistasPage = () => {
                             {meses.map(m => (
                               <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                             ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="comunicacao">Comunicação</Label>
+                        <Select value={formData.comunicacao || "nenhum"} onValueChange={(v) => setFormData({ ...formData, comunicacao: v === "nenhum" ? "" : v })}>
+                          <SelectTrigger data-testid="select-comunicacao">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nenhum">Selecione</SelectItem>
+                            <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                            <SelectItem value="Correio">Correio</SelectItem>
+                            <SelectItem value="Telefone">Telefone</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
