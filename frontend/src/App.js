@@ -555,7 +555,7 @@ const DizimistasPage = () => {
     data_nascimento: "", nota: "Novo", status: "Ativo", 
     modo_contribuicao: "", mes_contribuicao: "", comunicacao: "", valor_dizimo: 0 
   });
-  const [filtros, setFiltros] = useState({ nota: "", status: "", mes_aniversario: "" });
+  const [filtros, setFiltros] = useState({ nota: "", status: "", mes_aniversario: "", nome: "" });
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef(null);
   const { hasPermission } = useAuth();
@@ -585,6 +585,7 @@ const DizimistasPage = () => {
       if (filtros.nota && filtros.nota !== "todos") url += `nota=${filtros.nota}&`;
       if (filtros.status && filtros.status !== "todos") url += `status=${filtros.status}&`;
       if (filtros.mes_aniversario && filtros.mes_aniversario !== "todos") url += `mes_aniversario=${filtros.mes_aniversario}&`;
+      if (filtros.nome) url += `nome=${encodeURIComponent(filtros.nome)}&`;
       
       const response = await axios.get(url);
       setDizimistas(response.data);
@@ -996,6 +997,13 @@ const DizimistasPage = () => {
               <div className="flex items-center gap-2">
                 <Label className="text-sm text-muted-foreground whitespace-nowrap">Filtrar por:</Label>
               </div>
+              <Input
+                placeholder="Buscar por nome..."
+                value={filtros.nome}
+                onChange={(e) => setFiltros({...filtros, nome: e.target.value})}
+                className="w-[200px]"
+                data-testid="filtro-nome-diz"
+              />
               <Select value={filtros.status} onValueChange={(v) => setFiltros({...filtros, status: v})}>
                 <SelectTrigger className="w-[130px]" data-testid="filtro-status-diz">
                   <SelectValue placeholder="Status" />
@@ -1029,9 +1037,9 @@ const DizimistasPage = () => {
                   ))}
                 </SelectContent>
               </Select>
-              {(filtros.status || filtros.nota || filtros.mes_aniversario) && 
-               (filtros.status !== "todos" || filtros.nota !== "todos" || filtros.mes_aniversario !== "todos") && (
-                <Button variant="ghost" size="sm" onClick={() => setFiltros({ nota: "", status: "", mes_aniversario: "" })}>
+              {(filtros.status || filtros.nota || filtros.mes_aniversario || filtros.nome) && 
+               (filtros.status !== "todos" || filtros.nota !== "todos" || filtros.mes_aniversario !== "todos" || filtros.nome) && (
+                <Button variant="ghost" size="sm" onClick={() => setFiltros({ nota: "", status: "", mes_aniversario: "", nome: "" })}>
                   Limpar
                 </Button>
               )}

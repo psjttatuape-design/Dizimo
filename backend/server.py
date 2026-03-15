@@ -552,6 +552,7 @@ async def list_dizimistas(
     nota: Optional[str] = None,
     status: Optional[str] = None,
     mes_aniversario: Optional[int] = None,
+    nome: Optional[str] = None,
     current_user: dict = Depends(get_current_user)
 ):
     if not check_permission(current_user, "dizimistas", "view"):
@@ -562,6 +563,8 @@ async def list_dizimistas(
         query["nota"] = nota
     if status and status != "todos":
         query["status"] = status
+    if nome:
+        query["nome"] = {"$regex": nome, "$options": "i"}
     
     dizimistas = await db.dizimistas.find(query, {"_id": 0}).to_list(10000)
     
