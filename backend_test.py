@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 
 # Get backend URL from frontend .env
-BACKEND_URL = "https://permission-manager-8.preview.emergentagent.com"
+BACKEND_URL = "https://psjt-dizimo.preview.emergentagent.com"
 API = f"{BACKEND_URL}/api"
 
 class DizimosAPITester:
