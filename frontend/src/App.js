@@ -1475,15 +1475,21 @@ const RelatoriosPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{loading ? "-" : resumo?.total_dizimistas || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {resumo?.dizimistas_ativos || 0} ativos
+              </p>
             </CardContent>
           </Card>
 
           <Card data-testid="card-total-arrecadado">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado (Mensal)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(resumo?.total_arrecadado)}</div>
+              <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(resumo?.total_valor_dizimo)}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Soma dos valores de dízimo
+              </p>
             </CardContent>
           </Card>
 
@@ -1493,6 +1499,9 @@ const RelatoriosPage = () => {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{loading ? "-" : resumo?.total_contribuicoes || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Registros no sistema
+              </p>
             </CardContent>
           </Card>
         </div>

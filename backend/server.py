@@ -719,7 +719,11 @@ async def get_resumo(
     
     dizimistas = await db.dizimistas.find(diz_query, {"_id": 0}).to_list(10000)
     dizimistas_ids = set(d["id"] for d in dizimistas)
-    total_dizimistas = len([d for d in dizimistas if d.get("status") == "Ativo"])
+    total_dizimistas = len(dizimistas)
+    dizimistas_ativos = len([d for d in dizimistas if d.get("status") == "Ativo"])
+    
+    # Calculate total from dizimistas valor_dizimo
+    total_valor_dizimo = sum(d.get("valor_dizimo", 0) for d in dizimistas if d.get("status") == "Ativo")
     
     # Get contributions
     contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(10000)
@@ -740,8 +744,11 @@ async def get_resumo(
         contribuicoes = [c for c in contribuicoes if c.get("data", "")[:7] <= data_fim]
         valores_mensais = [v for v in valores_mensais if f"{v.get('ano')}-{str(v.get('mes')).zfill(2)}" <= data_fim]
     
-    total_arrecadado = sum(c.get("valor", 0) for c in contribuicoes)
-    total_arrecadado += sum(v.get("valor", 0) for v in valores_mensais)
+    total_contribuicoes = sum(c.get("valor", 0) for c in contribuicoes)
+    total_valores_mensais = sum(v.get("valor", 0) for v in valores_mensais)
+    
+    # Total arrecadado = soma dos valores de dízimo + contribuições registradas + valores mensais
+    total_arrecadado = total_valor_dizimo + total_contribuicoes + total_valores_mensais
     
     # Monthly breakdown
     monthly = {}
@@ -756,7 +763,9 @@ async def get_resumo(
     
     return {
         "total_dizimistas": total_dizimistas,
+        "dizimistas_ativos": dizimistas_ativos,
         "total_arrecadado": total_arrecadado,
+        "total_valor_dizimo": total_valor_dizimo,
         "total_contribuicoes": len(contribuicoes),
         "por_mes": monthly
     }
