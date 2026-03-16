@@ -1,4 +1,4 @@
-# PRD - Sistema de Gestão de Dízimos
+# PRD - Sistema de Gestão de Dízimos PSJT
 
 ## Problem Statement Original
 Adicionar uma aba de configuração para definir administrador e usuários e suas respectivas permissões de que campos podem acessar ou alterar.
@@ -29,6 +29,12 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 
 ## What's Been Implemented
 
+### Março 2026 - Sessão Atual (Últimas Alterações)
+- **Campo Comunicação** adicionado em Dizimistas com opções: WhatsApp, Correio, E-mail
+- **Filtro por Nome** na página de Dizimistas (busca parcial, case insensitive)
+- **Relatório Atualizado** - calcula automaticamente o total arrecadado baseado nos valores de dízimo dos dizimistas ativos
+- **Limpeza do banco** de dizimistas realizada (lista pronta para nova importação)
+
 ### Janeiro 2026 - MVP Inicial
 - Login Page com logo da Paróquia São Judas Tadeu, cores institucionais
 - Dashboard com cards de estatísticas
@@ -46,7 +52,7 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 - Campo telefone residencial
 - Gráfico de 15 meses com linha de média
 
-### Dezembro 2025 - P0 Features (Atual)
+### Dezembro 2025 - P0 Features
 - **Dashboard Filters**: Filtros de Status, Nota e Mês de Contribuição com contagem de dizimistas
 - **Novos Campos Dizimista**: modo_contribuicao (PIX, Envelope, Depósito) e mes_contribuicao
 - **Exportação com Filtros**: Diálogo mostra filtros ativos, exporta usando mesmos filtros da listagem
@@ -56,24 +62,27 @@ Adicionar uma aba de configuração para definir administrador e usuários e sua
 - GET /api/auth/me - Usuário atual
 - GET/POST/PUT/DELETE /api/users - CRUD usuários (admin only)
 - PUT /api/users/{id}/permissions - Atualizar permissões
-- GET/POST/PUT/DELETE /api/dizimistas - CRUD dizimistas
+- GET/POST/PUT/DELETE /api/dizimistas - CRUD dizimistas (com filtro por nome)
 - GET /api/dizimistas/template/excel - Template para importação
 - POST /api/dizimistas/import/excel - Importar dizimistas via Excel
 - GET /api/dizimistas/export/excel - Exportar dizimistas (com filtros)
 - GET/POST /api/contribuicoes - Contribuições
-- GET /api/relatorios/resumo - Resumo estatístico
+- GET /api/relatorios/resumo - Resumo estatístico (inclui total_valor_dizimo)
 - GET /api/relatorios/contribuicoes - Lista de contribuições
 - GET/POST/PUT/DELETE /api/valores-mensais - Valores mensais históricos
 
 ## Database Schema
 - **users**: id, username, password, name, role, permissions, active, created_at
-- **dizimistas**: id, nome, telefone, telefone_residencial, email, logradouro, numero, complemento, cep, data_nascimento, nota, status, modo_contribuicao, mes_contribuicao, valor_dizimo, data_cadastro, ultima_contribuicao
+- **dizimistas**: id, nome, telefone, telefone_residencial, email, logradouro, numero, complemento, cep, data_nascimento, nota, status, modo_contribuicao, mes_contribuicao, **comunicacao**, valor_dizimo, data_cadastro, ultima_contribuicao
 - **contribuicoes**: id, dizimista_id, valor, data, observacao
 - **valores_mensais**: id, mes, ano, valor, observacao, created_at
 
 ## Credenciais Padrão
 - **Usuário**: admin
 - **Senha**: admin123
+
+## URL do Sistema
+- **Preview**: https://psjt-dizimo.preview.emergentagent.com
 
 ## Logo da Paróquia
 https://customer-assets.emergentagent.com/job_permission-manager-8/artifacts/hr97hygf_Logo%20PSJT.jpg
@@ -86,7 +95,7 @@ https://customer-assets.emergentagent.com/job_permission-manager-8/artifacts/hr9
 - Cron job para atualização automática de status
 
 ### P2 - Média Prioridade  
-- Barra de pesquisa por nome na lista de dizimistas
+- ~~Barra de pesquisa por nome na lista de dizimistas~~ ✅ FEITO
 - Reset de senha por admin
 - Comparativo ano a ano nos relatórios
 
