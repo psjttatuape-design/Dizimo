@@ -939,7 +939,7 @@ const DizimistasPage = () => {
                             <SelectItem value="nenhum">Selecione</SelectItem>
                             <SelectItem value="WhatsApp">WhatsApp</SelectItem>
                             <SelectItem value="Correio">Correio</SelectItem>
-                            <SelectItem value="Telefone">Telefone</SelectItem>
+                            <SelectItem value="E-mail">E-mail</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

@@ -91,7 +91,7 @@ class DizimistaBase(BaseModel):
     status: str = "Ativo"  # Ativo, Pendente, Inativo
     modo_contribuicao: str = ""  # PIX, Envelope, Depósito
     mes_contribuicao: str = ""  # Mês preferencial de contribuição
-    comunicacao: str = ""  # WhatsApp, Correio, Telefone
+    comunicacao: str = ""  # WhatsApp, Correio, E-mail
     valor_dizimo: float = 0.0
     data_cadastro: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     ultima_contribuicao: str = ""
