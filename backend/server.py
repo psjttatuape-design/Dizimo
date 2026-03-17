@@ -790,10 +790,16 @@ async def get_resumo(
     dizimistas = await db.dizimistas.find(diz_query, {"_id": 0}).to_list(10000)
     dizimistas_ids = set(d["id"] for d in dizimistas)
     total_dizimistas = len(dizimistas)
-    dizimistas_ativos = len([d for d in dizimistas if d.get("status") == "Ativo"])
+    
+    # Count by status (always from all dizimistas, not filtered)
+    all_dizimistas = await db.dizimistas.find({}, {"_id": 0}).to_list(10000)
+    dizimistas_ativos = len([d for d in all_dizimistas if d.get("status") == "Ativo"])
+    dizimistas_pendentes = len([d for d in all_dizimistas if d.get("status") == "Pendente"])
+    dizimistas_inativos = len([d for d in all_dizimistas if d.get("status") == "Inativo"])
+    total_geral = len(all_dizimistas)
     
     # Calculate total from dizimistas valor_dizimo
-    total_valor_dizimo = sum(d.get("valor_dizimo", 0) for d in dizimistas if d.get("status") == "Ativo")
+    total_valor_dizimo = sum(d.get("valor_dizimo", 0) for d in all_dizimistas if d.get("status") == "Ativo")
     
     # Get contributions
     contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(10000)
@@ -832,8 +838,10 @@ async def get_resumo(
         monthly[key] = monthly.get(key, 0) + v.get("valor", 0)
     
     return {
-        "total_dizimistas": total_dizimistas,
+        "total_dizimistas": total_geral,
         "dizimistas_ativos": dizimistas_ativos,
+        "dizimistas_pendentes": dizimistas_pendentes,
+        "dizimistas_inativos": dizimistas_inativos,
         "total_arrecadado": total_arrecadado,
         "total_valor_dizimo": total_valor_dizimo,
         "total_contribuicoes": len(contribuicoes),

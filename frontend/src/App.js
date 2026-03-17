@@ -142,9 +142,9 @@ const LoginPage = () => {
         <div className="login-hero-overlay" />
         <div className="login-hero-content">
           <blockquote className="text-xl italic font-light mb-2">
-            "Trazei todos os dízimos à casa do tesouro..."
+            "Cada um dê como dispôs em seu coração, sem pena nem constrangimento, pois Deus ama a quem dá com alegria."
           </blockquote>
-          <p className="text-sm opacity-80">Malaquias 3:10</p>
+          <p className="text-sm opacity-80">2 Coríntios 9,7</p>
         </div>
       </div>
       
@@ -409,32 +409,67 @@ const Dashboard = () => {
 
         {hasPermission("relatorios", "view") ? (
           <>
-            <div className="bento-grid">
-              <Card className="animate-fade-in" data-testid="card-dizimistas">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="animate-fade-in" data-testid="card-total">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">Total Dizimistas</CardTitle>
-                  <UserCheck className="w-4 h-4 text-muted-foreground" />
+                  <Users className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold">{loading ? "-" : stats?.total_dizimistas || 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Membros ativos</p>
+                  <p className="text-xs text-muted-foreground mt-1">Cadastrados no sistema</p>
                 </CardContent>
               </Card>
 
-              <Card className="animate-fade-in animate-delay-100" data-testid="card-arrecadado">
+              <Card className="animate-fade-in animate-delay-100" data-testid="card-ativos">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Ativos</CardTitle>
+                  <UserCheck className="w-4 h-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600">{loading ? "-" : stats?.dizimistas_ativos || 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Contribuindo regularmente</p>
+                </CardContent>
+              </Card>
+
+              <Card className="animate-fade-in animate-delay-200" data-testid="card-pendentes">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Pendentes</CardTitle>
+                  <Calendar className="w-4 h-4 text-yellow-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-yellow-600">{loading ? "-" : stats?.dizimistas_pendentes || 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Aguardando contribuição</p>
+                </CardContent>
+              </Card>
+
+              <Card className="animate-fade-in animate-delay-300" data-testid="card-inativos">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Inativos</CardTitle>
+                  <Users className="w-4 h-4 text-red-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-red-600">{loading ? "-" : stats?.dizimistas_inativos || 0}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Sem contribuição recente</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="animate-fade-in" data-testid="card-arrecadado">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado (Mensal)</CardTitle>
                   <DollarSign className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(stats?.total_arrecadado)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Todas as contribuições</p>
+                  <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(stats?.total_valor_dizimo)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Soma dos valores de dízimo ativos</p>
                 </CardContent>
               </Card>
 
-              <Card className="animate-fade-in animate-delay-200" data-testid="card-contribuicoes">
+              <Card className="animate-fade-in animate-delay-100" data-testid="card-contribuicoes">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Contribuições</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Contribuições Registradas</CardTitle>
                   <TrendingUp className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
