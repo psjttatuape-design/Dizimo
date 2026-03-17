@@ -232,6 +232,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { path: "/", icon: Home, label: "Dashboard", show: true },
     { path: "/dizimistas", icon: Users, label: "Dizimistas", show: hasPermission("dizimistas", "view") },
+    { path: "/contribuicoes", icon: DollarSign, label: "Contribuições", show: hasPermission("dizimistas", "view") },
     { path: "/relatorios", icon: FileText, label: "Relatórios", show: hasPermission("relatorios", "view") },
     { path: "/configuracoes", icon: Settings, label: "Configurações", show: user?.role === "admin" },
   ];
@@ -1190,6 +1191,346 @@ const DizimistasPage = () => {
               </TableBody>
             </Table>
           </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+// Contribuicoes Page
+const ContribuicoesPage = () => {
+  const [contribuicoes, setContribuicoes] = useState([]);
+  const [dizimistas, setDizimistas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingContribuicao, setEditingContribuicao] = useState(null);
+  const [formData, setFormData] = useState({
+    dizimista_id: "", valor: "", data: "", mes_referencia: "", observacao: ""
+  });
+  const [filtros, setFiltros] = useState({ dizimista_id: "", mes_referencia: "" });
+  const { hasPermission } = useAuth();
+
+  const meses = [
+    { value: "1", label: "Janeiro" },
+    { value: "2", label: "Fevereiro" },
+    { value: "3", label: "Março" },
+    { value: "4", label: "Abril" },
+    { value: "5", label: "Maio" },
+    { value: "6", label: "Junho" },
+    { value: "7", label: "Julho" },
+    { value: "8", label: "Agosto" },
+    { value: "9", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" }
+  ];
+
+  useEffect(() => {
+    fetchData();
+  }, [filtros]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch dizimistas for dropdown
+      const dizRes = await axios.get(`${API}/dizimistas`);
+      setDizimistas(dizRes.data);
+
+      // Fetch contribuicoes with filters
+      let url = `${API}/contribuicoes?`;
+      if (filtros.dizimista_id) url += `dizimista_id=${filtros.dizimista_id}&`;
+      if (filtros.mes_referencia && filtros.mes_referencia !== "todos") url += `mes_referencia=${filtros.mes_referencia}&`;
+      
+      const contribRes = await axios.get(url);
+      setContribuicoes(contribRes.data);
+    } catch (error) {
+      toast.error("Erro ao buscar dados");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...formData,
+        valor: parseFloat(formData.valor) || 0
+      };
+
+      if (editingContribuicao) {
+        await axios.put(`${API}/contribuicoes/${editingContribuicao.id}`, payload);
+        toast.success("Contribuição atualizada!");
+      } else {
+        await axios.post(`${API}/contribuicoes`, payload);
+        toast.success("Contribuição registrada!");
+      }
+      setDialogOpen(false);
+      setEditingContribuicao(null);
+      setFormData({ dizimista_id: "", valor: "", data: "", mes_referencia: "", observacao: "" });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Erro ao salvar");
+    }
+  };
+
+  const handleEdit = (contrib) => {
+    setEditingContribuicao(contrib);
+    setFormData({
+      dizimista_id: contrib.dizimista_id,
+      valor: contrib.valor.toString(),
+      data: contrib.data?.split("T")[0] || "",
+      mes_referencia: contrib.mes_referencia || "",
+      observacao: contrib.observacao || ""
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Deseja excluir esta contribuição?")) return;
+    try {
+      await axios.delete(`${API}/contribuicoes/${id}`);
+      toast.success("Contribuição excluída!");
+      fetchData();
+    } catch (error) {
+      toast.error("Erro ao excluir");
+    }
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "-";
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('pt-BR');
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const canEdit = hasPermission("dizimistas", "edit");
+  const totalContribuicoes = contribuicoes.reduce((sum, c) => sum + (c.valor || 0), 0);
+
+  return (
+    <Layout>
+      <div className="page-container">
+        <div className="page-header">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Contribuições</h1>
+            <p className="text-muted-foreground">Gerenciar contribuições dos dizimistas</p>
+          </div>
+          <div className="flex gap-2">
+            {canEdit && (
+              <Dialog open={dialogOpen} onOpenChange={(open) => { 
+                setDialogOpen(open); 
+                if (!open) { 
+                  setEditingContribuicao(null); 
+                  setFormData({ dizimista_id: "", valor: "", data: "", mes_referencia: "", observacao: "" }); 
+                } 
+              }}>
+                <DialogTrigger asChild>
+                  <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nova Contribuição
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>{editingContribuicao ? "Editar Contribuição" : "Nova Contribuição"}</DialogTitle>
+                    <DialogDescription>Registre uma contribuição de dízimo</DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="dizimista_id">Dizimista *</Label>
+                      <Select 
+                        value={formData.dizimista_id} 
+                        onValueChange={(v) => setFormData({ ...formData, dizimista_id: v })}
+                        disabled={!!editingContribuicao}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o dizimista" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dizimistas.map(d => (
+                            <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="valor">Valor (R$) *</Label>
+                        <Input
+                          id="valor"
+                          type="number"
+                          step="0.01"
+                          value={formData.valor}
+                          onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+                          placeholder="0,00"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="data">Data</Label>
+                        <Input
+                          id="data"
+                          type="date"
+                          value={formData.data}
+                          onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mes_referencia">Mês de Referência</Label>
+                      <Select 
+                        value={formData.mes_referencia || "nenhum"} 
+                        onValueChange={(v) => setFormData({ ...formData, mes_referencia: v === "nenhum" ? "" : v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nenhum">Selecione</SelectItem>
+                          {meses.map(m => (
+                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="observacao">Observação</Label>
+                      <Input
+                        id="observacao"
+                        value={formData.observacao}
+                        onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
+                        placeholder="Observação opcional"
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">
+                        {editingContribuicao ? "Atualizar" : "Registrar"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total de Registros</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{contribuicoes.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Valor Total</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(totalContribuicoes)}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Dizimistas Cadastrados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{dizimistas.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">Filtrar por:</Label>
+              </div>
+              <Select value={filtros.mes_referencia} onValueChange={(v) => setFiltros({...filtros, mes_referencia: v})}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Mês Ref." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Meses</SelectItem>
+                  {meses.map(m => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(filtros.mes_referencia && filtros.mes_referencia !== "todos") && (
+                <Button variant="ghost" size="sm" onClick={() => setFiltros({ dizimista_id: "", mes_referencia: "" })}>
+                  Limpar
+                </Button>
+              )}
+              <div className="ml-auto text-sm text-muted-foreground">
+                {contribuicoes.length} contribuição(ões) encontrada(s)
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Table */}
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Dizimista</TableHead>
+                <TableHead>Data</TableHead>
+                <TableHead>Mês Ref.</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Observação</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    Carregando...
+                  </TableCell>
+                </TableRow>
+              ) : contribuicoes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    Nenhuma contribuição registrada
+                  </TableCell>
+                </TableRow>
+              ) : (
+                contribuicoes.map((contrib) => (
+                  <TableRow key={contrib.id}>
+                    <TableCell className="font-medium">{contrib.dizimista_nome || "—"}</TableCell>
+                    <TableCell>{formatDate(contrib.data)}</TableCell>
+                    <TableCell>
+                      {contrib.mes_referencia ? meses.find(m => m.value === contrib.mes_referencia)?.label || contrib.mes_referencia : "—"}
+                    </TableCell>
+                    <TableCell className="font-semibold text-green-600">{formatCurrency(contrib.valor)}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{contrib.observacao || "—"}</TableCell>
+                    <TableCell className="text-right">
+                      {canEdit && (
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(contrib)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(contrib.id)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </Card>
       </div>
     </Layout>
@@ -2220,6 +2561,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/dizimistas" element={<ProtectedRoute><DizimistasPage /></ProtectedRoute>} />
+          <Route path="/contribuicoes" element={<ProtectedRoute><ContribuicoesPage /></ProtectedRoute>} />
           <Route path="/relatorios" element={<ProtectedRoute><RelatoriosPage /></ProtectedRoute>} />
           <Route path="/configuracoes" element={<ProtectedRoute><ConfiguracoesPage /></ProtectedRoute>} />
         </Routes>

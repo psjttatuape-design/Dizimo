@@ -134,15 +134,24 @@ class ContribuicaoBase(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     dizimista_id: str
+    dizimista_nome: str = ""  # Para facilitar visualização
     valor: float
-    data: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    data: str = Field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    mes_referencia: str = ""  # Mês de referência da contribuição
     observacao: str = ""
 
 class ContribuicaoCreate(BaseModel):
     dizimista_id: str
     valor: float
     data: Optional[str] = None
+    mes_referencia: str = ""
     observacao: str = ""
+
+class ContribuicaoUpdate(BaseModel):
+    valor: Optional[float] = None
+    data: Optional[str] = None
+    mes_referencia: Optional[str] = None
+    observacao: Optional[str] = None
 
 class ValorMensalBase(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -621,10 +630,37 @@ async def delete_dizimista(dizimista_id: str, current_user: dict = Depends(get_c
 
 # Contribuicoes Routes
 @api_router.get("/contribuicoes")
-async def list_contribuicoes(current_user: dict = Depends(get_current_user)):
+async def list_contribuicoes(
+    dizimista_id: Optional[str] = None,
+    mes_referencia: Optional[str] = None,
+    data_inicio: Optional[str] = None,
+    data_fim: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
     if not check_permission(current_user, "dizimistas", "view"):
         raise HTTPException(status_code=403, detail="Sem permissão para visualizar contribuições")
-    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(1000)
+    
+    query = {}
+    if dizimista_id:
+        query["dizimista_id"] = dizimista_id
+    if mes_referencia and mes_referencia != "todos":
+        query["mes_referencia"] = mes_referencia
+    
+    contribuicoes = await db.contribuicoes.find(query, {"_id": 0}).sort("data", -1).to_list(10000)
+    
+    # Filter by date range
+    if data_inicio:
+        contribuicoes = [c for c in contribuicoes if c.get("data", "")[:10] >= data_inicio]
+    if data_fim:
+        contribuicoes = [c for c in contribuicoes if c.get("data", "")[:10] <= data_fim]
+    
+    # Add dizimista name to each contribution
+    dizimistas = await db.dizimistas.find({}, {"_id": 0, "id": 1, "nome": 1}).to_list(10000)
+    diz_map = {d["id"]: d["nome"] for d in dizimistas}
+    
+    for c in contribuicoes:
+        c["dizimista_nome"] = diz_map.get(c.get("dizimista_id"), "Desconhecido")
+    
     return contribuicoes
 
 @api_router.post("/contribuicoes")
@@ -632,9 +668,16 @@ async def create_contribuicao(data: ContribuicaoCreate, current_user: dict = Dep
     if not check_permission(current_user, "dizimistas", "edit"):
         raise HTTPException(status_code=403, detail="Sem permissão para registrar contribuições")
     
+    # Get dizimista name
+    dizimista = await db.dizimistas.find_one({"id": data.dizimista_id}, {"_id": 0})
+    if not dizimista:
+        raise HTTPException(status_code=404, detail="Dizimista não encontrado")
+    
     contribuicao_data = data.model_dump()
+    contribuicao_data["dizimista_nome"] = dizimista.get("nome", "")
+    
     if not contribuicao_data.get("data"):
-        contribuicao_data["data"] = datetime.now(timezone.utc).isoformat()
+        contribuicao_data["data"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     
     contribuicao = ContribuicaoBase(**contribuicao_data).model_dump()
     await db.contribuicoes.insert_one(contribuicao)
@@ -650,6 +693,33 @@ async def create_contribuicao(data: ContribuicaoCreate, current_user: dict = Dep
     )
     
     return contribuicao
+
+@api_router.put("/contribuicoes/{contribuicao_id}")
+async def update_contribuicao(contribuicao_id: str, data: ContribuicaoUpdate, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para editar contribuições")
+    
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="Nenhum dado para atualizar")
+    
+    result = await db.contribuicoes.update_one({"id": contribuicao_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Contribuição não encontrada")
+    
+    updated = await db.contribuicoes.find_one({"id": contribuicao_id}, {"_id": 0})
+    return updated
+
+@api_router.delete("/contribuicoes/{contribuicao_id}")
+async def delete_contribuicao(contribuicao_id: str, current_user: dict = Depends(get_current_user)):
+    if not check_permission(current_user, "dizimistas", "edit"):
+        raise HTTPException(status_code=403, detail="Sem permissão para excluir contribuições")
+    
+    result = await db.contribuicoes.delete_one({"id": contribuicao_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Contribuição não encontrada")
+    
+    return {"message": "Contribuição excluída"}
 
 # Update dizimistas status based on contributions
 async def update_all_dizimistas_status():
