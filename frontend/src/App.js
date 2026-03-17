@@ -1251,6 +1251,17 @@ const ContribuicoesPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validação
+    if (!formData.dizimista_id) {
+      toast.error("Selecione um dizimista");
+      return;
+    }
+    if (!formData.valor || parseFloat(formData.valor) <= 0) {
+      toast.error("Informe um valor válido");
+      return;
+    }
+    
     try {
       const payload = {
         ...formData,
