@@ -680,7 +680,6 @@ const DizimistasPage = () => {
 
   const handleDeleteFromEdit = async () => {
     if (!editingDizimista) return;
-    if (!window.confirm("Deseja excluir este dizimista?")) return;
     try {
       await axios.delete(`${API}/dizimistas/${editingDizimista.id}`);
       toast.success("Dizimista excluído!");
@@ -693,7 +692,6 @@ const DizimistasPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Deseja excluir este dizimista?")) return;
     try {
       await axios.delete(`${API}/dizimistas/${id}`);
       toast.success("Dizimista excluído!");
