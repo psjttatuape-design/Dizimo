@@ -138,20 +138,20 @@ class ContribuicaoBase(BaseModel):
     valor: float
     data: str = Field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d"))
     mes_referencia: str = ""  # Mês de referência da contribuição
-    observacao: str = ""
+    meio: str = ""  # Envelope, Pix/Depósito, Presencial
 
 class ContribuicaoCreate(BaseModel):
     dizimista_id: str
     valor: float
     data: Optional[str] = None
     mes_referencia: str = ""
-    observacao: str = ""
+    meio: str = ""
 
 class ContribuicaoUpdate(BaseModel):
     valor: Optional[float] = None
     data: Optional[str] = None
     mes_referencia: Optional[str] = None
-    observacao: Optional[str] = None
+    meio: Optional[str] = None
 
 class ValorMensalBase(BaseModel):
     model_config = ConfigDict(extra="ignore")

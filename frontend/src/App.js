@@ -1238,7 +1238,7 @@ const ContribuicoesPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContribuicao, setEditingContribuicao] = useState(null);
   const [formData, setFormData] = useState({
-    dizimista_id: "", valor: "", data: "", mes_referencia: "", observacao: ""
+    dizimista_id: "", valor: "", data: "", mes_referencia: "", meio: ""
   });
   const [filtros, setFiltros] = useState({ dizimista_id: "", mes_referencia: "" });
   const { hasPermission } = useAuth();
@@ -1310,7 +1310,7 @@ const ContribuicoesPage = () => {
       }
       setDialogOpen(false);
       setEditingContribuicao(null);
-      setFormData({ dizimista_id: "", valor: "", data: "", mes_referencia: "", observacao: "" });
+      setFormData({ dizimista_id: "", valor: "", data: "", mes_referencia: "", meio: "" });
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Erro ao salvar");
@@ -1324,7 +1324,7 @@ const ContribuicoesPage = () => {
       valor: contrib.valor.toString(),
       data: contrib.data?.split("T")[0] || "",
       mes_referencia: contrib.mes_referencia || "",
-      observacao: contrib.observacao || ""
+      meio: contrib.meio || ""
     });
     setDialogOpen(true);
   };
@@ -1371,7 +1371,7 @@ const ContribuicoesPage = () => {
                 setDialogOpen(open); 
                 if (!open) { 
                   setEditingContribuicao(null); 
-                  setFormData({ dizimista_id: "", valor: "", data: "", mes_referencia: "", observacao: "" }); 
+                  setFormData({ dizimista_id: "", valor: "", data: "", mes_referencia: "", meio: "" }); 
                 } 
               }}>
                 <DialogTrigger asChild>
@@ -1444,13 +1444,21 @@ const ContribuicoesPage = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="observacao">Observação</Label>
-                      <Input
-                        id="observacao"
-                        value={formData.observacao}
-                        onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                        placeholder="Observação opcional"
-                      />
+                      <Label htmlFor="meio">Meio</Label>
+                      <Select 
+                        value={formData.meio || "nenhum"} 
+                        onValueChange={(v) => setFormData({ ...formData, meio: v === "nenhum" ? "" : v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="nenhum">Selecione</SelectItem>
+                          <SelectItem value="Envelope">Envelope</SelectItem>
+                          <SelectItem value="Pix/Depósito">Pix/Depósito</SelectItem>
+                          <SelectItem value="Presencial">Presencial</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <DialogFooter>
                       <Button type="submit">
@@ -1531,7 +1539,7 @@ const ContribuicoesPage = () => {
                 <TableHead>Data</TableHead>
                 <TableHead>Mês Ref.</TableHead>
                 <TableHead>Valor</TableHead>
-                <TableHead>Observação</TableHead>
+                <TableHead>Meio</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -1557,7 +1565,7 @@ const ContribuicoesPage = () => {
                       {contrib.mes_referencia ? meses.find(m => m.value === contrib.mes_referencia)?.label || contrib.mes_referencia : "—"}
                     </TableCell>
                     <TableCell className="font-semibold text-green-600">{formatCurrency(contrib.valor)}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{contrib.observacao || "—"}</TableCell>
+                    <TableCell>{contrib.meio || "—"}</TableCell>
                     <TableCell className="text-right">
                       {canEdit && (
                         <div className="flex justify-end gap-1">
