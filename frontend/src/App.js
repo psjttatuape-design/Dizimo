@@ -1330,7 +1330,7 @@ const ContribuicoesPage = () => {
   return (
     <Layout>
       <div className="page-container">
-        <div className="page-header">
+        <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Contribuições</h1>
             <p className="text-muted-foreground">Gerenciar contribuições dos dizimistas</p>
