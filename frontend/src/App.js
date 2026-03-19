@@ -208,10 +208,6 @@ const LoginPage = () => {
               {isLoading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-          
-          <p className="text-center text-sm text-muted-foreground">
-            Credenciais padrão: admin / admin123
-          </p>
         </div>
       </div>
     </div>
