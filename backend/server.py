@@ -577,7 +577,7 @@ async def list_dizimistas(
     
     dizimistas = await db.dizimistas.find(query, {"_id": 0}).to_list(10000)
     
-    # Filter by birthday month
+    # Filter by birthday month and sort by day
     if mes_aniversario:
         filtered = []
         for d in dizimistas:
@@ -585,9 +585,16 @@ async def list_dizimistas(
                 try:
                     parts = d["data_nascimento"].split("-")
                     if len(parts) >= 2 and int(parts[1]) == mes_aniversario:
+                        # Add day for sorting
+                        d["_sort_day"] = int(parts[2]) if len(parts) >= 3 else 0
                         filtered.append(d)
                 except:
                     pass
+        # Sort by day (menor para maior)
+        filtered.sort(key=lambda x: x.get("_sort_day", 0))
+        # Remove temporary sort field
+        for d in filtered:
+            d.pop("_sort_day", None)
         dizimistas = filtered
     
     return dizimistas

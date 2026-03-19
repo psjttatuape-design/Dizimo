@@ -589,7 +589,7 @@ const DizimistasPage = () => {
     nome: "", telefone: "", telefone_residencial: "", email: "", 
     logradouro: "", numero: "", complemento: "", cep: "",
     data_nascimento: "", nota: "Novo", status: "Ativo", 
-    modo_contribuicao: "", mes_contribuicao: "", comunicacao: "", valor_dizimo: 0 
+    comunicacao: "", valor_dizimo: 0 
   });
   const [filtros, setFiltros] = useState({ nota: "", status: "", mes_aniversario: "", nome: "" });
   const [importing, setImporting] = useState(false);
@@ -648,7 +648,7 @@ const DizimistasPage = () => {
         nome: "", telefone: "", telefone_residencial: "", email: "", 
         logradouro: "", numero: "", complemento: "", cep: "",
         data_nascimento: "", nota: "Novo", status: "Ativo", 
-        modo_contribuicao: "", mes_contribuicao: "", comunicacao: "", valor_dizimo: 0 
+        comunicacao: "", valor_dizimo: 0 
       });
       fetchDizimistas();
     } catch (error) {
@@ -670,8 +670,6 @@ const DizimistasPage = () => {
       data_nascimento: dizimista.data_nascimento || "",
       nota: dizimista.nota || "Novo",
       status: dizimista.status || "Ativo",
-      modo_contribuicao: dizimista.modo_contribuicao || "",
-      mes_contribuicao: dizimista.mes_contribuicao || "",
       comunicacao: dizimista.comunicacao || "",
       valor_dizimo: dizimista.valor_dizimo
     });
@@ -815,7 +813,7 @@ const DizimistasPage = () => {
             </DropdownMenu>
 
             {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", nota: "Novo", status: "Ativo", modo_contribuicao: "", mes_contribuicao: "", comunicacao: "", valor_dizimo: 0 }); } }}>
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", nota: "Novo", status: "Ativo", comunicacao: "", valor_dizimo: 0 }); } }}>
                 <DialogTrigger asChild>
                   <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
                     <Plus className="w-4 h-4 mr-2" />
@@ -934,34 +932,6 @@ const DizimistasPage = () => {
                           value={formData.valor_dizimo}
                           onChange={(e) => setFormData({ ...formData, valor_dizimo: parseFloat(e.target.value) || 0 })}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="modo_contribuicao">Modo Contribuição</Label>
-                        <Select value={formData.modo_contribuicao || "nenhum"} onValueChange={(v) => setFormData({ ...formData, modo_contribuicao: v === "nenhum" ? "" : v })}>
-                          <SelectTrigger data-testid="select-modo">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="nenhum">Selecione</SelectItem>
-                            <SelectItem value="PIX">PIX</SelectItem>
-                            <SelectItem value="Envelope">Envelope</SelectItem>
-                            <SelectItem value="Depósito">Depósito</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="mes_contribuicao">Mês Contribuição</Label>
-                        <Select value={formData.mes_contribuicao || "nenhum"} onValueChange={(v) => setFormData({ ...formData, mes_contribuicao: v === "nenhum" ? "" : v })}>
-                          <SelectTrigger data-testid="select-mes-contrib">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="nenhum">Selecione</SelectItem>
-                            {meses.map(m => (
-                              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="comunicacao">Comunicação</Label>
