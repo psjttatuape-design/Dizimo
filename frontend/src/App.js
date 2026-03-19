@@ -1755,80 +1755,6 @@ const RelatoriosPage = () => {
             <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
             <p className="text-muted-foreground">Visualize os relatórios de contribuições</p>
           </div>
-          {canEdit && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-valor">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Registrar Mês Anterior
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Registrar Valor Mensal</DialogTitle>
-                  <DialogDescription>Insira o valor total de um mês anterior</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="mes">Mês *</Label>
-                      <Select value={formData.mes} onValueChange={(value) => setFormData({ ...formData, mes: value })}>
-                        <SelectTrigger data-testid="select-mes">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {meses.map(m => (
-                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ano">Ano *</Label>
-                      <Select value={formData.ano} onValueChange={(value) => setFormData({ ...formData, ano: value })}>
-                        <SelectTrigger data-testid="select-ano">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {anos.map(a => (
-                            <SelectItem key={a} value={String(a)}>{a}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="valor">Valor Total (R$) *</Label>
-                    <Input
-                      id="valor"
-                      data-testid="input-valor-mensal"
-                      type="number"
-                      step="0.01"
-                      value={formData.valor}
-                      onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
-                      placeholder="0,00"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="observacao">Observação</Label>
-                    <Input
-                      id="observacao"
-                      data-testid="input-observacao"
-                      value={formData.observacao}
-                      onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                      placeholder="Ex: Dízimos + ofertas"
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit" data-testid="btn-salvar-valor">
-                      Registrar
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
         </div>
 
         <div className="bento-grid">
@@ -1926,56 +1852,6 @@ const RelatoriosPage = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* Monthly Values Table */}
-        {valoresMensais.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Valores Mensais Registrados
-              </CardTitle>
-              <CardDescription>Totais mensais inseridos manualmente</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Mês/Ano</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Observação</TableHead>
-                    {canEdit && <TableHead className="text-right">Ações</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {valoresMensais
-                    .sort((a, b) => (b.ano * 100 + b.mes) - (a.ano * 100 + a.mes))
-                    .map((valor) => (
-                    <TableRow key={valor.id} data-testid={`row-valor-${valor.id}`}>
-                      <TableCell className="font-medium">
-                        {getMesNome(valor.mes)} / {valor.ano}
-                      </TableCell>
-                      <TableCell>{formatCurrency(valor.valor)}</TableCell>
-                      <TableCell>{valor.observacao || "-"}</TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleDelete(valor.id)}
-                            data-testid={`btn-delete-valor-${valor.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
 
         <Card>
           <CardHeader>
