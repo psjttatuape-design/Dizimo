@@ -1829,14 +1829,14 @@ const RelatoriosPage = () => {
                     <Tooltip content={<CustomTooltip />} />
                     <Bar 
                       dataKey="valor" 
-                      fill="#b91c1c" 
+                      fill="#d97a7a" 
                       radius={[4, 4, 0, 0]}
                       name="Arrecadado"
                     />
                     <Line 
                       type="monotone" 
                       dataKey="media" 
-                      stroke="#16a34a" 
+                      stroke="#6b9e6b" 
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       dot={false}
