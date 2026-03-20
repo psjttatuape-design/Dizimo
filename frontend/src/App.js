@@ -1110,20 +1110,21 @@ const DizimistasPage = () => {
 
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Celular</TableHead>
-                  <TableHead>Tel. Residencial</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Aniversário</TableHead>
-                  <TableHead>Comunicação</TableHead>
-                  <TableHead>Nota</TableHead>
-                  <TableHead>Status</TableHead>
-                  {canEdit && <TableHead className="text-right">Ações</TableHead>}
-                </TableRow>
-              </TableHeader>
+            <div className="max-h-[500px] overflow-auto">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Celular</TableHead>
+                    <TableHead>Tel. Residencial</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Aniversário</TableHead>
+                    <TableHead>Comunicação</TableHead>
+                    <TableHead>Nota</TableHead>
+                    <TableHead>Status</TableHead>
+                    {canEdit && <TableHead className="text-right">Ações</TableHead>}
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
@@ -1187,6 +1188,7 @@ const DizimistasPage = () => {
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
