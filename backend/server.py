@@ -575,7 +575,8 @@ async def list_dizimistas(
     if nome:
         query["nome"] = {"$regex": nome, "$options": "i"}
     
-    dizimistas = await db.dizimistas.find(query, {"_id": 0}).to_list(10000)
+    # Buscar dizimistas ordenados por nome (alfabético)
+    dizimistas = await db.dizimistas.find(query, {"_id": 0}).sort("nome", 1).to_list(10000)
     
     # Filter by birthday month and sort by day
     if mes_aniversario:
