@@ -1120,7 +1120,6 @@ const DizimistasPage = () => {
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
                   <TableHead>Aniversário</TableHead>
-                  <TableHead>Valor Dízimo</TableHead>
                   <TableHead>Nota</TableHead>
                   <TableHead>Status</TableHead>
                   {canEdit && <TableHead className="text-right">Ações</TableHead>}
@@ -1129,13 +1128,13 @@ const DizimistasPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 7 : 6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={canEdit ? 6 : 5} className="text-center py-8 text-muted-foreground">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : dizimistas.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 7 : 6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={canEdit ? 6 : 5} className="text-center py-8 text-muted-foreground">
                       Nenhum dizimista cadastrado
                     </TableCell>
                   </TableRow>
@@ -1145,9 +1144,6 @@ const DizimistasPage = () => {
                       <TableCell className="font-medium">{dizimista.nome}</TableCell>
                       <TableCell>{dizimista.telefone || "-"}</TableCell>
                       <TableCell>{formatDate(dizimista.data_nascimento)}</TableCell>
-                      <TableCell>
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(dizimista.valor_dizimo || 0)}
-                      </TableCell>
                       <TableCell>
                         <Badge 
                           variant="outline" 
@@ -2083,7 +2079,6 @@ const ConfiguracoesPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Deseja excluir este usuário?")) return;
     try {
       await axios.delete(`${API}/users/${id}`);
       toast.success("Usuário excluído!");
