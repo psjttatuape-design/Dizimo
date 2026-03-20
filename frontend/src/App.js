@@ -990,65 +990,61 @@ const DizimistasPage = () => {
           </div>
         </div>
 
-        {/* Filtros */}
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground whitespace-nowrap">Filtrar por:</Label>
-              </div>
-              <Input
-                placeholder="Buscar por nome..."
-                value={filtros.nome}
-                onChange={(e) => setFiltros({...filtros, nome: e.target.value})}
-                className="w-[200px]"
-                data-testid="filtro-nome-diz"
-              />
-              <Select value={filtros.status} onValueChange={(v) => setFiltros({...filtros, status: v})}>
-                <SelectTrigger className="w-[130px]" data-testid="filtro-status-diz">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos Status</SelectItem>
-                  <SelectItem value="Ativo">Ativo</SelectItem>
-                  <SelectItem value="Pendente">Pendente</SelectItem>
-                  <SelectItem value="Inativo">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filtros.nota} onValueChange={(v) => setFiltros({...filtros, nota: v})}>
-                <SelectTrigger className="w-[130px]" data-testid="filtro-nota-diz">
-                  <SelectValue placeholder="Nota" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas Notas</SelectItem>
-                  <SelectItem value="Novo">Novo</SelectItem>
-                  <SelectItem value="Atualizar">Atualizar</SelectItem>
-                  <SelectItem value="OK">OK</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filtros.mes_aniversario} onValueChange={(v) => setFiltros({...filtros, mes_aniversario: v})}>
-                <SelectTrigger className="w-[150px]" data-testid="filtro-aniversario-diz">
-                  <SelectValue placeholder="Aniversário" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Meses</SelectItem>
-                  {meses.map(m => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {(filtros.status || filtros.nota || filtros.mes_aniversario || filtros.nome) && 
-               (filtros.status !== "todos" || filtros.nota !== "todos" || filtros.mes_aniversario !== "todos" || filtros.nome) && (
-                <Button variant="ghost" size="sm" onClick={() => setFiltros({ nota: "", status: "", mes_aniversario: "", nome: "" })}>
-                  Limpar
-                </Button>
-              )}
-              <div className="ml-auto text-sm text-muted-foreground">
-                {dizimistas.length} dizimista(s) encontrado(s)
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Filtros - fora do card */}
+        <div className="flex items-center gap-4 flex-wrap mb-4 p-4 bg-muted/30 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm text-muted-foreground whitespace-nowrap">Filtrar por:</Label>
+          </div>
+          <Input
+            placeholder="Buscar por nome..."
+            value={filtros.nome}
+            onChange={(e) => setFiltros({...filtros, nome: e.target.value})}
+            className="w-[200px] bg-background"
+            data-testid="filtro-nome-diz"
+          />
+          <Select value={filtros.status} onValueChange={(v) => setFiltros({...filtros, status: v})}>
+            <SelectTrigger className="w-[130px] bg-background" data-testid="filtro-status-diz">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos Status</SelectItem>
+              <SelectItem value="Ativo">Ativo</SelectItem>
+              <SelectItem value="Pendente">Pendente</SelectItem>
+              <SelectItem value="Inativo">Inativo</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filtros.nota} onValueChange={(v) => setFiltros({...filtros, nota: v})}>
+            <SelectTrigger className="w-[130px] bg-background" data-testid="filtro-nota-diz">
+              <SelectValue placeholder="Nota" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas Notas</SelectItem>
+              <SelectItem value="Novo">Novo</SelectItem>
+              <SelectItem value="Atualizar">Atualizar</SelectItem>
+              <SelectItem value="OK">OK</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filtros.mes_aniversario} onValueChange={(v) => setFiltros({...filtros, mes_aniversario: v})}>
+            <SelectTrigger className="w-[150px] bg-background" data-testid="filtro-aniversario-diz">
+              <SelectValue placeholder="Aniversário" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Meses</SelectItem>
+              {meses.map(m => (
+                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(filtros.status || filtros.nota || filtros.mes_aniversario || filtros.nome) && 
+           (filtros.status !== "todos" || filtros.nota !== "todos" || filtros.mes_aniversario !== "todos" || filtros.nome) && (
+            <Button variant="ghost" size="sm" onClick={() => setFiltros({ nota: "", status: "", mes_aniversario: "", nome: "" })}>
+              Limpar
+            </Button>
+          )}
+          <div className="ml-auto text-sm text-muted-foreground font-medium">
+            {dizimistas.length} dizimista(s) encontrado(s)
+          </div>
+        </div>
 
         {/* Import Dialog */}
         <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
