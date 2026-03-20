@@ -605,6 +605,14 @@ async def create_dizimista(data: DizimistaCreate, current_user: dict = Depends(g
     if not check_permission(current_user, "dizimistas", "edit"):
         raise HTTPException(status_code=403, detail="Sem permissão para criar dizimistas")
     
+    # Verificar se já existe dizimista com o mesmo nome (case insensitive)
+    existing = await db.dizimistas.find_one(
+        {"nome": {"$regex": f"^{data.nome}$", "$options": "i"}},
+        {"_id": 0}
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Já existe um dizimista com o nome '{data.nome}'")
+    
     dizimista = DizimistaBase(**data.model_dump()).model_dump()
     await db.dizimistas.insert_one(dizimista)
     dizimista.pop("_id", None)
