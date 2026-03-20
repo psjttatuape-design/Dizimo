@@ -1118,7 +1118,9 @@ const DizimistasPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Telefone</TableHead>
+                  <TableHead>Celular</TableHead>
+                  <TableHead>Tel. Residencial</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Aniversário</TableHead>
                   <TableHead>Nota</TableHead>
                   <TableHead>Status</TableHead>
@@ -1128,13 +1130,13 @@ const DizimistasPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={canEdit ? 8 : 7} className="text-center py-8 text-muted-foreground">
                       Carregando...
                     </TableCell>
                   </TableRow>
                 ) : dizimistas.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={canEdit ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={canEdit ? 8 : 7} className="text-center py-8 text-muted-foreground">
                       Nenhum dizimista cadastrado
                     </TableCell>
                   </TableRow>
@@ -1143,6 +1145,8 @@ const DizimistasPage = () => {
                     <TableRow key={dizimista.id} data-testid={`row-dizimista-${dizimista.id}`}>
                       <TableCell className="font-medium">{dizimista.nome}</TableCell>
                       <TableCell>{dizimista.telefone || "-"}</TableCell>
+                      <TableCell>{dizimista.telefone_residencial || "-"}</TableCell>
+                      <TableCell>{dizimista.email || "-"}</TableCell>
                       <TableCell>{formatDate(dizimista.data_nascimento)}</TableCell>
                       <TableCell>
                         <Badge 
