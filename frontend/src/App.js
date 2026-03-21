@@ -584,7 +584,8 @@ const DizimistasPage = () => {
   const [formData, setFormData] = useState({ 
     nome: "", telefone: "", telefone_residencial: "", email: "", 
     logradouro: "", numero: "", complemento: "", cep: "",
-    data_nascimento: "", nota: "Novo", status: "Ativo", 
+    data_nascimento: "", estado_civil: "", nome_conjuge: "",
+    nota: "Novo", status: "Ativo", 
     comunicacao: "", valor_dizimo: 0 
   });
   const [filtros, setFiltros] = useState({ nota: "", status: "", mes_aniversario: "", nome: "" });
@@ -643,7 +644,8 @@ const DizimistasPage = () => {
       setFormData({ 
         nome: "", telefone: "", telefone_residencial: "", email: "", 
         logradouro: "", numero: "", complemento: "", cep: "",
-        data_nascimento: "", nota: "Novo", status: "Ativo", 
+        data_nascimento: "", estado_civil: "", nome_conjuge: "",
+        nota: "Novo", status: "Ativo", 
         comunicacao: "", valor_dizimo: 0 
       });
       fetchDizimistas();
@@ -664,6 +666,8 @@ const DizimistasPage = () => {
       complemento: dizimista.complemento || "",
       cep: dizimista.cep || "",
       data_nascimento: dizimista.data_nascimento || "",
+      estado_civil: dizimista.estado_civil || "",
+      nome_conjuge: dizimista.nome_conjuge || "",
       nota: dizimista.nota || "Novo",
       status: dizimista.status || "Ativo",
       comunicacao: dizimista.comunicacao || "",
@@ -809,7 +813,7 @@ const DizimistasPage = () => {
             </DropdownMenu>
 
             {canEdit && (
-              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", nota: "Novo", status: "Ativo", comunicacao: "", valor_dizimo: 0 }); } }}>
+              <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingDizimista(null); setFormData({ nome: "", telefone: "", telefone_residencial: "", email: "", logradouro: "", numero: "", complemento: "", cep: "", data_nascimento: "", estado_civil: "", nome_conjuge: "", nota: "Novo", status: "Ativo", comunicacao: "", valor_dizimo: 0 }); } }}>
                 <DialogTrigger asChild>
                   <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90" data-testid="btn-novo-dizimista">
                     <Plus className="w-4 h-4 mr-2" />
@@ -916,6 +920,34 @@ const DizimistasPage = () => {
                           onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
                         />
                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="estado_civil">Estado Civil</Label>
+                        <Select value={formData.estado_civil || "nenhum"} onValueChange={(v) => setFormData({ ...formData, estado_civil: v === "nenhum" ? "" : v, nome_conjuge: v !== "Casado" ? "" : formData.nome_conjuge })}>
+                          <SelectTrigger data-testid="select-estado-civil">
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nenhum">Selecione</SelectItem>
+                            <SelectItem value="Solteiro">Solteiro</SelectItem>
+                            <SelectItem value="Casado">Casado</SelectItem>
+                            <SelectItem value="Outros">Outros</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {formData.estado_civil === "Casado" && (
+                        <div className="space-y-2">
+                          <Label htmlFor="nome_conjuge">Nome do Cônjuge</Label>
+                          <Input
+                            id="nome_conjuge"
+                            data-testid="input-conjuge"
+                            value={formData.nome_conjuge}
+                            onChange={(e) => setFormData({ ...formData, nome_conjuge: e.target.value })}
+                            placeholder="Nome do cônjuge"
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">
