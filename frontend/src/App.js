@@ -226,9 +226,9 @@ const Sidebar = ({ isOpen, onClose }) => {
   };
 
   const navItems = [
-    { path: "/", icon: Home, label: "Dashboard", show: true },
+    { path: "/", icon: Home, label: "Dashboard", show: hasPermission("dashboard", "view") || user?.role === "admin" },
     { path: "/dizimistas", icon: Users, label: "Dizimistas", show: hasPermission("dizimistas", "view") },
-    { path: "/contribuicoes", icon: DollarSign, label: "Contribuições", show: hasPermission("dizimistas", "view") },
+    { path: "/contribuicoes", icon: DollarSign, label: "Contribuições", show: hasPermission("contribuicoes", "view") },
     { path: "/relatorios", icon: FileText, label: "Relatórios", show: hasPermission("relatorios", "view") },
     { path: "/configuracoes", icon: Settings, label: "Configurações", show: user?.role === "admin" },
   ];
@@ -2061,8 +2061,11 @@ const ConfiguracoesPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [formData, setFormData] = useState({ username: "", password: "", name: "", role: "user" });
   const [permissions, setPermissions] = useState({
+    dashboard_view: true,
     dizimistas_view: false,
     dizimistas_edit: false,
+    contribuicoes_view: false,
+    contribuicoes_edit: false,
     relatorios_view: false,
     relatorios_edit: false
   });
@@ -2127,8 +2130,11 @@ const ConfiguracoesPage = () => {
   const openPermissionsDialog = (user) => {
     setSelectedUser(user);
     setPermissions(user.permissions || {
+      dashboard_view: true,
       dizimistas_view: false,
       dizimistas_edit: false,
+      contribuicoes_view: false,
+      contribuicoes_edit: false,
       relatorios_view: false,
       relatorios_edit: false
     });
@@ -2149,8 +2155,8 @@ const ConfiguracoesPage = () => {
 
   const getPermissionLevel = (perms) => {
     if (!perms) return "Nenhum";
-    const hasView = perms.dizimistas_view || perms.relatorios_view;
-    const hasEdit = perms.dizimistas_edit || perms.relatorios_edit;
+    const hasView = perms.dashboard_view || perms.dizimistas_view || perms.contribuicoes_view || perms.relatorios_view;
+    const hasEdit = perms.dizimistas_edit || perms.contribuicoes_edit || perms.relatorios_edit;
     if (hasEdit) return "Editar";
     if (hasView) return "Visualizar";
     return "Nenhum";
@@ -2404,7 +2410,26 @@ const ConfiguracoesPage = () => {
                     Defina as permissões para {selectedUser?.name}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6 py-4">
+                <div className="space-y-6 py-4 max-h-[400px] overflow-y-auto">
+                  {/* Dashboard */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Home className="w-4 h-4" />
+                      Dashboard
+                    </h4>
+                    <div className="ml-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="dashboard_view" className="cursor-pointer">Visualizar</Label>
+                        <Switch
+                          id="dashboard_view"
+                          checked={permissions.dashboard_view}
+                          onCheckedChange={(checked) => setPermissions({ ...permissions, dashboard_view: checked })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dizimistas */}
                   <div className="space-y-4">
                     <h4 className="font-medium flex items-center gap-2">
                       <Users className="w-4 h-4" />
@@ -2431,7 +2456,34 @@ const ConfiguracoesPage = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Contribuições */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Contribuições
+                    </h4>
+                    <div className="ml-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="contribuicoes_view" className="cursor-pointer">Visualizar</Label>
+                        <Switch
+                          id="contribuicoes_view"
+                          checked={permissions.contribuicoes_view}
+                          onCheckedChange={(checked) => setPermissions({ ...permissions, contribuicoes_view: checked })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="contribuicoes_edit" className="cursor-pointer">Editar / Criar / Excluir</Label>
+                        <Switch
+                          id="contribuicoes_edit"
+                          checked={permissions.contribuicoes_edit}
+                          onCheckedChange={(checked) => setPermissions({ ...permissions, contribuicoes_edit: checked, contribuicoes_view: checked || permissions.contribuicoes_view })}
+                        />
+                      </div>
+                    </div>
+                  </div>
                   
+                  {/* Relatórios */}
                   <div className="space-y-4">
                     <h4 className="font-medium flex items-center gap-2">
                       <FileText className="w-4 h-4" />

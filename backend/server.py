@@ -38,8 +38,11 @@ api_router = APIRouter(prefix="/api")
 
 # Models
 class UserPermissions(BaseModel):
+    dashboard_view: bool = True
     dizimistas_view: bool = False
     dizimistas_edit: bool = False
+    contribuicoes_view: bool = False
+    contribuicoes_edit: bool = False
     relatorios_view: bool = False
     relatorios_edit: bool = False
 
