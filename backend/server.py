@@ -488,7 +488,7 @@ async def export_dizimistas_excel(
         top=Side(style='thin'), bottom=Side(style='thin')
     )
     
-    headers = ["Nome", "Celular", "Tel. Residencial", "Email", "Logradouro", "Nº", "Complemento", "CEP", "Aniversário", "Nota", "Status", "Modo Contrib.", "Comunicação", "Valor Dízimo"]
+    headers = ["Nome", "Celular", "Tel. Residencial", "Email", "Logradouro", "Nº", "Complemento", "CEP", "Aniversário", "Nota", "Status", "Estado Civil", "Cônjuge", "Comunicação"]
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = header_font
@@ -508,7 +508,7 @@ async def export_dizimistas_excel(
     ws.column_dimensions['J'].width = 10
     ws.column_dimensions['K'].width = 10
     ws.column_dimensions['L'].width = 12
-    ws.column_dimensions['M'].width = 12
+    ws.column_dimensions['M'].width = 25
     ws.column_dimensions['N'].width = 12
     
     for row_num, d in enumerate(dizimistas, 2):
@@ -534,9 +534,9 @@ async def export_dizimistas_excel(
             aniversario,
             d.get("nota", ""),
             d.get("status", "Ativo"),
-            d.get("modo_contribuicao", ""),
-            d.get("comunicacao", ""),
-            d.get("valor_dizimo", 0)
+            d.get("estado_civil", ""),
+            d.get("nome_conjuge", ""),
+            d.get("comunicacao", "")
         ]
         for col, value in enumerate(values, 1):
             cell = ws.cell(row=row_num, column=col, value=value)
