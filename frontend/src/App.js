@@ -1236,6 +1236,8 @@ const ContribuicoesPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContribuicao, setEditingContribuicao] = useState(null);
   const [showDetailedList, setShowDetailedList] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contribuicaoToDelete, setContribuicaoToDelete] = useState(null);
   
   // Função para obter valores padrão (data e mês atual)
   const getDefaultFormData = () => {
@@ -1342,14 +1344,24 @@ const ContribuicoesPage = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Deseja excluir esta contribuição?")) return;
+  // Abrir modal de confirmação para deletar
+  const openDeleteDialog = (contrib) => {
+    setContribuicaoToDelete(contrib);
+    setDeleteDialogOpen(true);
+  };
+
+  // Confirmar exclusão
+  const confirmDelete = async () => {
+    if (!contribuicaoToDelete) return;
     try {
-      await axios.delete(`${API}/contribuicoes/${id}`);
+      await axios.delete(`${API}/contribuicoes/${contribuicaoToDelete.id}`);
       toast.success("Contribuição excluída!");
       fetchData();
     } catch (error) {
       toast.error("Erro ao excluir");
+    } finally {
+      setDeleteDialogOpen(false);
+      setContribuicaoToDelete(null);
     }
   };
 
@@ -1710,7 +1722,7 @@ const ContribuicoesPage = () => {
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(contrib)}>
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(contrib.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => openDeleteDialog(contrib)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>
@@ -1722,6 +1734,37 @@ const ContribuicoesPage = () => {
             </Table>
           </Card>
         )}
+
+        {/* Modal de Confirmação de Exclusão */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="w-5 h-5" />
+                Confirmar Exclusão
+              </DialogTitle>
+              <DialogDescription className="pt-2">
+                Tem certeza que deseja excluir esta contribuição?
+                {contribuicaoToDelete && (
+                  <div className="mt-3 p-3 bg-muted rounded-lg">
+                    <p><strong>Dizimista:</strong> {contribuicaoToDelete.dizimista_nome}</p>
+                    <p><strong>Valor:</strong> {formatCurrency(contribuicaoToDelete.valor)}</p>
+                    <p><strong>Data:</strong> {formatDate(contribuicaoToDelete.data)}</p>
+                  </div>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
