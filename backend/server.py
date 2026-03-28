@@ -1010,6 +1010,84 @@ async def list_valores_mensais(current_user: dict = Depends(get_current_user)):
     valores = await db.valores_mensais.find({}, {"_id": 0}).to_list(1000)
     return valores
 
+@api_router.get("/contribuicoes/resumo-por-mes")
+async def get_contribuicoes_resumo_por_mes(current_user: dict = Depends(get_current_user)):
+    """Retorna o total de contribuições agrupadas por mês de referência"""
+    if not check_permission(current_user, "dizimistas", "view"):
+        raise HTTPException(status_code=403, detail="Sem permissão")
+    
+    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(10000)
+    
+    # Agrupar por mês de referência
+    resumo = {}
+    for contrib in contribuicoes:
+        mes_ref = contrib.get("mes_referencia", "")
+        if mes_ref:
+            if mes_ref not in resumo:
+                resumo[mes_ref] = {"total": 0, "quantidade": 0}
+            resumo[mes_ref]["total"] += contrib.get("valor", 0)
+            resumo[mes_ref]["quantidade"] += 1
+    
+    return resumo
+
+@api_router.post("/contribuicoes/sincronizar-valores-mensais")
+async def sincronizar_contribuicoes_valores_mensais(current_user: dict = Depends(get_current_user)):
+    """Sincroniza as contribuições com os valores mensais no relatório"""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Apenas administradores podem sincronizar")
+    
+    # Buscar todas as contribuições
+    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(10000)
+    
+    # Agrupar por mês/ano de referência
+    totais = {}
+    for contrib in contribuicoes:
+        mes_ref = contrib.get("mes_referencia", "")
+        data = contrib.get("data", "")
+        
+        if mes_ref:
+            # Usar mês de referência
+            mes = int(mes_ref)
+            # Determinar o ano pela data da contribuição
+            if data:
+                ano = int(data[:4])
+            else:
+                ano = datetime.now().year
+        elif data:
+            # Sem mês de referência, usar data da contribuição
+            mes = int(data[5:7])
+            ano = int(data[:4])
+        else:
+            continue
+        
+        key = (mes, ano)
+        if key not in totais:
+            totais[key] = 0
+        totais[key] += contrib.get("valor", 0)
+    
+    # Atualizar valores mensais
+    atualizados = 0
+    for (mes, ano), valor in totais.items():
+        existing = await db.valores_mensais.find_one({"mes": mes, "ano": ano})
+        if existing:
+            await db.valores_mensais.update_one(
+                {"mes": mes, "ano": ano},
+                {"$set": {"valor": valor, "observacao": "Atualizado via contribuições"}}
+            )
+        else:
+            novo_valor = {
+                "id": str(uuid.uuid4()),
+                "mes": mes,
+                "ano": ano,
+                "valor": valor,
+                "observacao": "Criado via contribuições",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.valores_mensais.insert_one(novo_valor)
+        atualizados += 1
+    
+    return {"message": f"{atualizados} meses atualizados com sucesso", "totais": {f"{m}/{a}": v for (m, a), v in totais.items()}}
+
 @api_router.post("/valores-mensais")
 async def create_valor_mensal(data: ValorMensalCreate, current_user: dict = Depends(get_current_user)):
     if not check_permission(current_user, "relatorios", "edit"):

@@ -1232,7 +1232,9 @@ const DizimistasPage = () => {
 const ContribuicoesPage = () => {
   const [contribuicoes, setContribuicoes] = useState([]);
   const [dizimistas, setDizimistas] = useState([]);
+  const [valoresMensais, setValoresMensais] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContribuicao, setEditingContribuicao] = useState(null);
   const [showDetailedList, setShowDetailedList] = useState(false);
@@ -1283,6 +1285,10 @@ const ContribuicoesPage = () => {
       const dizRes = await axios.get(`${API}/dizimistas`);
       setDizimistas(dizRes.data);
 
+      // Fetch valores mensais do relatório
+      const valoresRes = await axios.get(`${API}/valores-mensais`);
+      setValoresMensais(valoresRes.data);
+
       // Fetch contribuicoes with filters
       let url = `${API}/contribuicoes?`;
       if (filtros.dizimista_id) url += `dizimista_id=${filtros.dizimista_id}&`;
@@ -1294,6 +1300,20 @@ const ContribuicoesPage = () => {
       toast.error("Erro ao buscar dados");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Sincronizar contribuições com valores mensais
+  const handleSincronizar = async () => {
+    setSyncing(true);
+    try {
+      const response = await axios.post(`${API}/contribuicoes/sincronizar-valores-mensais`);
+      toast.success(response.data.message);
+      fetchData(); // Recarregar dados
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Erro ao sincronizar");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -1393,15 +1413,29 @@ const ContribuicoesPage = () => {
     return acc;
   }, {});
 
-  // Ordenar meses
-  const mesesOrdenados = Object.keys(contribuicoesPorMes)
-    .filter(key => key !== "sem_mes")
-    .sort((a, b) => parseInt(a) - parseInt(b));
+  // Criar mapa de valores mensais do relatório (para o ano atual e anterior)
+  const valoresMensaisMap = valoresMensais.reduce((acc, v) => {
+    const key = `${v.mes}`;
+    if (!acc[key]) {
+      acc[key] = { valor: 0, ano: v.ano };
+    }
+    // Pegar o valor mais recente (maior ano)
+    if (v.ano >= acc[key].ano) {
+      acc[key] = { valor: v.valor, ano: v.ano };
+    }
+    return acc;
+  }, {});
+
+  // Ordenar meses (1-12)
+  const mesesOrdenados = meses.map(m => m.value);
   
-  // Adicionar "sem_mes" no final se existir
+  // Adicionar "sem_mes" no final se existir contribuições sem mês
   if (contribuicoesPorMes["sem_mes"]) {
     mesesOrdenados.push("sem_mes");
   }
+
+  // Calcular total dos valores mensais do relatório
+  const totalValoresMensais = Object.values(valoresMensaisMap).reduce((sum, v) => sum + (v.valor || 0), 0);
 
   return (
     <Layout>
@@ -1412,6 +1446,16 @@ const ContribuicoesPage = () => {
             <p className="text-muted-foreground">Gerenciar contribuições dos dizimistas</p>
           </div>
           <div className="flex gap-2">
+            {isAdmin && (
+              <Button 
+                variant="outline"
+                onClick={handleSincronizar}
+                disabled={syncing}
+              >
+                <TrendingUp className="w-4 h-4 mr-2" />
+                {syncing ? "Sincronizando..." : "Atualizar Relatório"}
+              </Button>
+            )}
             {isAdmin && (
               <Button 
                 variant={showDetailedList ? "default" : "outline"}
@@ -1585,18 +1629,18 @@ const ContribuicoesPage = () => {
           </CardContent>
         </Card>
 
-        {/* Table - Totais por Mês */}
+        {/* Table - Totais por Mês (Valores do Relatório) */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Totais por Mês de Referência</CardTitle>
-            <CardDescription>Resumo das contribuições agrupadas por mês</CardDescription>
+            <CardDescription>Valores registrados no relatório de contribuições mensais</CardDescription>
           </CardHeader>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Mês de Referência</TableHead>
-                <TableHead className="text-center">Qtd. Contribuições</TableHead>
-                <TableHead className="text-right">Valor Total</TableHead>
+                <TableHead className="text-center">Contrib. Registradas</TableHead>
+                <TableHead className="text-right">Valor no Relatório</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1606,32 +1650,40 @@ const ContribuicoesPage = () => {
                     Carregando...
                   </TableCell>
                 </TableRow>
-              ) : mesesOrdenados.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                    Nenhuma contribuição registrada
-                  </TableCell>
-                </TableRow>
               ) : (
                 <>
-                  {mesesOrdenados.map((mesKey) => (
-                    <TableRow key={mesKey}>
-                      <TableCell className="font-medium">
-                        {mesKey === "sem_mes" 
-                          ? "Sem mês definido" 
-                          : meses.find(m => m.value === mesKey)?.label || mesKey}
-                      </TableCell>
-                      <TableCell className="text-center">{contribuicoesPorMes[mesKey].quantidade}</TableCell>
-                      <TableCell className="text-right font-semibold text-green-600">
-                        {formatCurrency(contribuicoesPorMes[mesKey].total)}
+                  {meses.map((mes) => {
+                    const valorRelatorio = valoresMensaisMap[mes.value]?.valor || 0;
+                    const contribMes = contribuicoesPorMes[mes.value] || { quantidade: 0, total: 0 };
+                    
+                    // Só mostrar se tiver valor no relatório OU contribuições
+                    if (valorRelatorio === 0 && contribMes.quantidade === 0) return null;
+                    
+                    return (
+                      <TableRow key={mes.value}>
+                        <TableCell className="font-medium">{mes.label}</TableCell>
+                        <TableCell className="text-center">{contribMes.quantidade}</TableCell>
+                        <TableCell className="text-right font-semibold text-green-600">
+                          {formatCurrency(valorRelatorio)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {/* Sem mês definido */}
+                  {contribuicoesPorMes["sem_mes"] && (
+                    <TableRow>
+                      <TableCell className="font-medium text-muted-foreground">Sem mês definido</TableCell>
+                      <TableCell className="text-center">{contribuicoesPorMes["sem_mes"].quantidade}</TableCell>
+                      <TableCell className="text-right font-semibold text-muted-foreground">
+                        {formatCurrency(contribuicoesPorMes["sem_mes"].total)}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                   {/* Linha de Total Geral */}
                   <TableRow className="bg-muted/50 font-bold">
                     <TableCell>TOTAL GERAL</TableCell>
                     <TableCell className="text-center">{contribuicoes.length}</TableCell>
-                    <TableCell className="text-right text-green-700">{formatCurrency(totalContribuicoes)}</TableCell>
+                    <TableCell className="text-right text-green-700">{formatCurrency(totalValoresMensais)}</TableCell>
                   </TableRow>
                 </>
               )}
