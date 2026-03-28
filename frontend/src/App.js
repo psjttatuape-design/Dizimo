@@ -1857,7 +1857,7 @@ const RelatoriosPage = () => {
                     <Tooltip content={<CustomTooltip />} />
                     <Bar 
                       dataKey="valor" 
-                      fill="#d97a7a" 
+                      fill="#3b82f6" 
                       radius={[4, 4, 0, 0]}
                       name="Arrecadado"
                     />
