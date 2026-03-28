@@ -34,6 +34,16 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 app = FastAPI()
+
+# CORS must be configured before routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 api_router = APIRouter(prefix="/api")
 
 # Models
@@ -1053,14 +1063,6 @@ async def health_check():
     return {"status": "healthy"}
 
 app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 logging.basicConfig(
     level=logging.INFO,
