@@ -1355,6 +1355,27 @@ const ContribuicoesPage = () => {
   const canEdit = hasPermission("dizimistas", "edit");
   const totalContribuicoes = contribuicoes.reduce((sum, c) => sum + (c.valor || 0), 0);
 
+  // Agrupar contribuições por mês de referência
+  const contribuicoesPorMes = contribuicoes.reduce((acc, contrib) => {
+    const mesKey = contrib.mes_referencia || "sem_mes";
+    if (!acc[mesKey]) {
+      acc[mesKey] = { total: 0, quantidade: 0 };
+    }
+    acc[mesKey].total += contrib.valor || 0;
+    acc[mesKey].quantidade += 1;
+    return acc;
+  }, {});
+
+  // Ordenar meses
+  const mesesOrdenados = Object.keys(contribuicoesPorMes)
+    .filter(key => key !== "sem_mes")
+    .sort((a, b) => parseInt(a) - parseInt(b));
+  
+  // Adicionar "sem_mes" no final se existir
+  if (contribuicoesPorMes["sem_mes"]) {
+    mesesOrdenados.push("sem_mes");
+  }
+
   return (
     <Layout>
       <div className="page-container">
@@ -1528,56 +1549,55 @@ const ContribuicoesPage = () => {
           </CardContent>
         </Card>
 
-        {/* Table */}
+        {/* Table - Totais por Mês */}
         <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Totais por Mês de Referência</CardTitle>
+            <CardDescription>Resumo das contribuições agrupadas por mês</CardDescription>
+          </CardHeader>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Dizimista</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Mês Ref.</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Meio</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead>Mês de Referência</TableHead>
+                <TableHead className="text-center">Qtd. Contribuições</TableHead>
+                <TableHead className="text-right">Valor Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                     Carregando...
                   </TableCell>
                 </TableRow>
-              ) : contribuicoes.length === 0 ? (
+              ) : mesesOrdenados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                     Nenhuma contribuição registrada
                   </TableCell>
                 </TableRow>
               ) : (
-                contribuicoes.map((contrib) => (
-                  <TableRow key={contrib.id}>
-                    <TableCell className="font-medium">{contrib.dizimista_nome || "—"}</TableCell>
-                    <TableCell>{formatDate(contrib.data)}</TableCell>
-                    <TableCell>
-                      {contrib.mes_referencia ? meses.find(m => m.value === contrib.mes_referencia)?.label || contrib.mes_referencia : "—"}
-                    </TableCell>
-                    <TableCell className="font-semibold text-green-600">{formatCurrency(contrib.valor)}</TableCell>
-                    <TableCell>{contrib.meio || "—"}</TableCell>
-                    <TableCell className="text-right">
-                      {canEdit && (
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(contrib)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(contrib.id)}>
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
+                <>
+                  {mesesOrdenados.map((mesKey) => (
+                    <TableRow key={mesKey}>
+                      <TableCell className="font-medium">
+                        {mesKey === "sem_mes" 
+                          ? "Sem mês definido" 
+                          : meses.find(m => m.value === mesKey)?.label || mesKey}
+                      </TableCell>
+                      <TableCell className="text-center">{contribuicoesPorMes[mesKey].quantidade}</TableCell>
+                      <TableCell className="text-right font-semibold text-green-600">
+                        {formatCurrency(contribuicoesPorMes[mesKey].total)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {/* Linha de Total Geral */}
+                  <TableRow className="bg-muted/50 font-bold">
+                    <TableCell>TOTAL GERAL</TableCell>
+                    <TableCell className="text-center">{contribuicoes.length}</TableCell>
+                    <TableCell className="text-right text-green-700">{formatCurrency(totalContribuicoes)}</TableCell>
                   </TableRow>
-                ))
+                </>
               )}
             </TableBody>
           </Table>
