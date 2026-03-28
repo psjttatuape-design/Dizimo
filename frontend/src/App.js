@@ -1235,6 +1235,7 @@ const ContribuicoesPage = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContribuicao, setEditingContribuicao] = useState(null);
+  const [showDetailedList, setShowDetailedList] = useState(false);
   
   // Função para obter valores padrão (data e mês atual)
   const getDefaultFormData = () => {
@@ -1252,7 +1253,8 @@ const ContribuicoesPage = () => {
   
   const [formData, setFormData] = useState(getDefaultFormData());
   const [filtros, setFiltros] = useState({ dizimista_id: "", mes_referencia: "" });
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const meses = [
     { value: "1", label: "Janeiro" },
@@ -1398,6 +1400,15 @@ const ContribuicoesPage = () => {
             <p className="text-muted-foreground">Gerenciar contribuições dos dizimistas</p>
           </div>
           <div className="flex gap-2">
+            {isAdmin && (
+              <Button 
+                variant={showDetailedList ? "default" : "outline"}
+                onClick={() => setShowDetailedList(!showDetailedList)}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                {showDetailedList ? "Ocultar Lista" : "Ver Lista Detalhada"}
+              </Button>
+            )}
             {canEdit && (
               <Dialog open={dialogOpen} onOpenChange={(open) => { 
                 setDialogOpen(open); 
@@ -1615,6 +1626,102 @@ const ContribuicoesPage = () => {
             </TableBody>
           </Table>
         </Card>
+
+        {/* Lista Detalhada - Apenas Admin */}
+        {isAdmin && showDetailedList && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Lista Detalhada de Contribuições
+              </CardTitle>
+              <CardDescription>Visualização completa com filtros (apenas administradores)</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center gap-4 mb-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground whitespace-nowrap">Filtrar por:</Label>
+                </div>
+                <Select 
+                  value={filtros.mes_referencia || "todos"} 
+                  onValueChange={(v) => setFiltros({...filtros, mes_referencia: v === "todos" ? "" : v})}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Mês Ref." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Meses</SelectItem>
+                    {meses.map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select 
+                  value={filtros.dizimista_id || "todos"} 
+                  onValueChange={(v) => setFiltros({...filtros, dizimista_id: v === "todos" ? "" : v})}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Dizimista" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Dizimistas</SelectItem>
+                    {dizimistas.map(d => (
+                      <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(filtros.mes_referencia || filtros.dizimista_id) && (
+                  <Button variant="ghost" size="sm" onClick={() => setFiltros({ dizimista_id: "", mes_referencia: "" })}>
+                    Limpar Filtros
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Dizimista</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Mês Ref.</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Meio</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contribuicoes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Nenhuma contribuição encontrada
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  contribuicoes.map((contrib) => (
+                    <TableRow key={contrib.id}>
+                      <TableCell className="font-medium">{contrib.dizimista_nome || "—"}</TableCell>
+                      <TableCell>{formatDate(contrib.data)}</TableCell>
+                      <TableCell>
+                        {contrib.mes_referencia ? meses.find(m => m.value === contrib.mes_referencia)?.label || contrib.mes_referencia : "—"}
+                      </TableCell>
+                      <TableCell className="font-semibold text-green-600">{formatCurrency(contrib.valor)}</TableCell>
+                      <TableCell>{contrib.meio || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(contrib)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(contrib.id)}>
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
       </div>
     </Layout>
   );
