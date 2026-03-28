@@ -327,9 +327,12 @@ const Layout = ({ children }) => {
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [dizimistas, setDizimistas] = useState([]);
+  const [valoresMensais, setValoresMensais] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtros, setFiltros] = useState({ nota: "", status: "", mes_contribuicao: "" });
   const { hasPermission } = useAuth();
+
+  const currentYear = new Date().getFullYear();
 
   const meses = [
     { value: "1", label: "Janeiro" },
@@ -360,6 +363,10 @@ const Dashboard = () => {
       // Fetch stats
       const statsRes = await axios.get(`${API}/relatorios/resumo`);
       setStats(statsRes.data);
+
+      // Fetch valores mensais para calcular total do ano
+      const valoresRes = await axios.get(`${API}/valores-mensais`);
+      setValoresMensais(valoresRes.data);
       
       // Fetch dizimistas with filters
       let url = `${API}/dizimistas?`;
@@ -394,6 +401,11 @@ const Dashboard = () => {
 
   // Calculate contribution count based on filtered dizimistas
   const contributionCount = dizimistas.length;
+
+  // Calcular total do ano atual
+  const totalAnoAtual = valoresMensais
+    .filter(v => v.ano === currentYear)
+    .reduce((sum, v) => sum + (v.valor || 0), 0);
 
   return (
     <Layout>
@@ -454,12 +466,12 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="animate-fade-in" data-testid="card-arrecadado">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado ({currentYear})</CardTitle>
                   <DollarSign className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(stats?.total_arrecadado)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Soma das contribuições</p>
+                  <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(totalAnoAtual)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Soma do ano</p>
                 </CardContent>
               </Card>
 
