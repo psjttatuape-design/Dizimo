@@ -1882,6 +1882,11 @@ const RelatoriosPage = () => {
   const currentYear = new Date().getFullYear();
   const anos = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
+  // Calcular total do ano atual
+  const totalAnoAtual = valoresMensais
+    .filter(v => v.ano === currentYear)
+    .reduce((sum, v) => sum + (v.valor || 0), 0);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -2059,12 +2064,12 @@ const RelatoriosPage = () => {
 
           <Card data-testid="card-total-arrecadado">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado ({currentYear})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(resumo?.total_arrecadado)}</div>
+              <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(totalAnoAtual)}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                Soma das contribuições registradas
+                Soma das contribuições do ano
               </p>
             </CardContent>
           </Card>
