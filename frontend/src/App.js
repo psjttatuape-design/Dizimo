@@ -1256,7 +1256,7 @@ const ContribuicoesPage = () => {
   };
   
   const [formData, setFormData] = useState(getDefaultFormData());
-  const [filtros, setFiltros] = useState({ dizimista_id: "", mes_referencia: "" });
+  const [filtros, setFiltros] = useState({ dizimista_id: "", mes_referencia: "", ano: "" });
   const { hasPermission, user } = useAuth();
   const isAdmin = user?.role === "admin";
 
@@ -1274,6 +1274,27 @@ const ContribuicoesPage = () => {
     { value: "11", label: "Novembro" },
     { value: "12", label: "Dezembro" }
   ];
+
+  // Gerar lista de anos (últimos 3 anos)
+  const anoAtual = new Date().getFullYear();
+  const anos = [anoAtual, anoAtual - 1, anoAtual - 2];
+
+  // Gerar últimos 12 meses
+  const getUltimos12Meses = () => {
+    const resultado = [];
+    const hoje = new Date();
+    for (let i = 0; i < 12; i++) {
+      const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      resultado.push({
+        mes: data.getMonth() + 1,
+        ano: data.getFullYear(),
+        label: `${meses[data.getMonth()].label}/${data.getFullYear()}`
+      });
+    }
+    return resultado;
+  };
+
+  const ultimos12Meses = getUltimos12Meses();
 
   useEffect(() => {
     fetchData();
@@ -1413,29 +1434,26 @@ const ContribuicoesPage = () => {
     return acc;
   }, {});
 
-  // Criar mapa de valores mensais do relatório (para o ano atual e anterior)
+  // Criar mapa de valores mensais do relatório por mês/ano
   const valoresMensaisMap = valoresMensais.reduce((acc, v) => {
-    const key = `${v.mes}`;
-    if (!acc[key]) {
-      acc[key] = { valor: 0, ano: v.ano };
-    }
-    // Pegar o valor mais recente (maior ano)
-    if (v.ano >= acc[key].ano) {
-      acc[key] = { valor: v.valor, ano: v.ano };
-    }
+    const key = `${v.mes}-${v.ano}`;
+    acc[key] = { valor: v.valor, mes: v.mes, ano: v.ano };
     return acc;
   }, {});
 
-  // Ordenar meses (1-12)
-  const mesesOrdenados = meses.map(m => m.value);
-  
-  // Adicionar "sem_mes" no final se existir contribuições sem mês
-  if (contribuicoesPorMes["sem_mes"]) {
-    mesesOrdenados.push("sem_mes");
-  }
+  // Calcular total dos últimos 12 meses
+  const totalUltimos12Meses = ultimos12Meses.reduce((sum, item) => {
+    const key = `${item.mes}-${item.ano}`;
+    return sum + (valoresMensaisMap[key]?.valor || 0);
+  }, 0);
 
-  // Calcular total dos valores mensais do relatório
-  const totalValoresMensais = Object.values(valoresMensaisMap).reduce((sum, v) => sum + (v.valor || 0), 0);
+  // Contar contribuições dos últimos 12 meses
+  const totalContribUltimos12 = contribuicoes.filter(c => {
+    if (!c.mes_referencia || !c.data) return false;
+    const ano = parseInt(c.data.substring(0, 4));
+    const mes = parseInt(c.mes_referencia);
+    return ultimos12Meses.some(u => u.mes === mes && u.ano === ano);
+  }).length;
 
   return (
     <Layout>
@@ -1608,7 +1626,7 @@ const ContribuicoesPage = () => {
               </div>
               <Select value={filtros.mes_referencia} onValueChange={(v) => setFiltros({...filtros, mes_referencia: v})}>
                 <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Mês Ref." />
+                  <SelectValue placeholder="Mês" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os Meses</SelectItem>
@@ -1617,8 +1635,19 @@ const ContribuicoesPage = () => {
                   ))}
                 </SelectContent>
               </Select>
-              {(filtros.mes_referencia && filtros.mes_referencia !== "todos") && (
-                <Button variant="ghost" size="sm" onClick={() => setFiltros({ dizimista_id: "", mes_referencia: "" })}>
+              <Select value={filtros.ano} onValueChange={(v) => setFiltros({...filtros, ano: v})}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {anos.map(ano => (
+                    <SelectItem key={ano} value={String(ano)}>{ano}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {((filtros.mes_referencia && filtros.mes_referencia !== "todos") || (filtros.ano && filtros.ano !== "todos")) && (
+                <Button variant="ghost" size="sm" onClick={() => setFiltros({ dizimista_id: "", mes_referencia: "", ano: "" })}>
                   Limpar
                 </Button>
               )}
@@ -1629,16 +1658,16 @@ const ContribuicoesPage = () => {
           </CardContent>
         </Card>
 
-        {/* Table - Totais por Mês (Valores do Relatório) */}
+        {/* Table - Últimos 12 Meses (Valores do Relatório) */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Totais por Mês de Referência</CardTitle>
+            <CardTitle className="text-lg">Últimos 12 Meses</CardTitle>
             <CardDescription>Valores registrados no relatório de contribuições mensais</CardDescription>
           </CardHeader>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Mês de Referência</TableHead>
+                <TableHead>Mês/Ano</TableHead>
                 <TableHead className="text-center">Contrib. Registradas</TableHead>
                 <TableHead className="text-right">Valor no Relatório</TableHead>
               </TableRow>
@@ -1652,38 +1681,33 @@ const ContribuicoesPage = () => {
                 </TableRow>
               ) : (
                 <>
-                  {meses.map((mes) => {
-                    const valorRelatorio = valoresMensaisMap[mes.value]?.valor || 0;
-                    const contribMes = contribuicoesPorMes[mes.value] || { quantidade: 0, total: 0 };
+                  {ultimos12Meses.map((item) => {
+                    const key = `${item.mes}-${item.ano}`;
+                    const valorRelatorio = valoresMensaisMap[key]?.valor || 0;
                     
-                    // Só mostrar se tiver valor no relatório OU contribuições
-                    if (valorRelatorio === 0 && contribMes.quantidade === 0) return null;
+                    // Contar contribuições desse mês/ano específico
+                    const contribCount = contribuicoes.filter(c => {
+                      if (!c.data) return false;
+                      const contribAno = parseInt(c.data.substring(0, 4));
+                      const contribMes = parseInt(c.mes_referencia || "0");
+                      return contribMes === item.mes && contribAno === item.ano;
+                    }).length;
                     
                     return (
-                      <TableRow key={mes.value}>
-                        <TableCell className="font-medium">{mes.label}</TableCell>
-                        <TableCell className="text-center">{contribMes.quantidade}</TableCell>
+                      <TableRow key={key}>
+                        <TableCell className="font-medium">{item.label}</TableCell>
+                        <TableCell className="text-center">{contribCount}</TableCell>
                         <TableCell className="text-right font-semibold text-green-600">
                           {formatCurrency(valorRelatorio)}
                         </TableCell>
                       </TableRow>
                     );
                   })}
-                  {/* Sem mês definido */}
-                  {contribuicoesPorMes["sem_mes"] && (
-                    <TableRow>
-                      <TableCell className="font-medium text-muted-foreground">Sem mês definido</TableCell>
-                      <TableCell className="text-center">{contribuicoesPorMes["sem_mes"].quantidade}</TableCell>
-                      <TableCell className="text-right font-semibold text-muted-foreground">
-                        {formatCurrency(contribuicoesPorMes["sem_mes"].total)}
-                      </TableCell>
-                    </TableRow>
-                  )}
                   {/* Linha de Total Geral */}
                   <TableRow className="bg-muted/50 font-bold">
-                    <TableCell>TOTAL GERAL</TableCell>
-                    <TableCell className="text-center">{contribuicoes.length}</TableCell>
-                    <TableCell className="text-right text-green-700">{formatCurrency(totalValoresMensais)}</TableCell>
+                    <TableCell>TOTAL (12 MESES)</TableCell>
+                    <TableCell className="text-center">{totalContribUltimos12}</TableCell>
+                    <TableCell className="text-right text-green-700">{formatCurrency(totalUltimos12Meses)}</TableCell>
                   </TableRow>
                 </>
               )}
