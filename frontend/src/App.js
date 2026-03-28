@@ -1235,9 +1235,22 @@ const ContribuicoesPage = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContribuicao, setEditingContribuicao] = useState(null);
-  const [formData, setFormData] = useState({
-    dizimista_id: "", valor: "", data: "", mes_referencia: "", meio: ""
-  });
+  
+  // Função para obter valores padrão (data e mês atual)
+  const getDefaultFormData = () => {
+    const hoje = new Date();
+    const dataAtual = hoje.toISOString().split('T')[0]; // formato YYYY-MM-DD
+    const mesAtual = String(hoje.getMonth() + 1); // getMonth() retorna 0-11
+    return {
+      dizimista_id: "", 
+      valor: "", 
+      data: dataAtual, 
+      mes_referencia: mesAtual, 
+      meio: ""
+    };
+  };
+  
+  const [formData, setFormData] = useState(getDefaultFormData());
   const [filtros, setFiltros] = useState({ dizimista_id: "", mes_referencia: "" });
   const { hasPermission } = useAuth();
 
@@ -1308,7 +1321,7 @@ const ContribuicoesPage = () => {
       }
       setDialogOpen(false);
       setEditingContribuicao(null);
-      setFormData({ dizimista_id: "", valor: "", data: "", mes_referencia: "", meio: "" });
+      setFormData(getDefaultFormData());
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Erro ao salvar");
@@ -1390,7 +1403,7 @@ const ContribuicoesPage = () => {
                 setDialogOpen(open); 
                 if (!open) { 
                   setEditingContribuicao(null); 
-                  setFormData({ dizimista_id: "", valor: "", data: "", mes_referencia: "", meio: "" }); 
+                  setFormData(getDefaultFormData()); 
                 } 
               }}>
                 <DialogTrigger asChild>
