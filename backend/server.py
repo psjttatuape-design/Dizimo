@@ -400,42 +400,111 @@ async def import_dizimistas_excel(file: UploadFile = File(...), current_user: di
     wb = openpyxl.load_workbook(BytesIO(content))
     ws = wb.active
     
+    # Read headers and create column mapping
+    headers = [str(cell.value or "").strip().lower() for cell in ws[1]]
+    
+    # Define possible column name variations
+    column_aliases = {
+        "nome": ["nome", "name", "nome*"],
+        "telefone": ["celular", "telefone celular", "telefone", "tel", "tel celular", "phone"],
+        "telefone_residencial": ["tel. residencial", "telefone residencial", "tel residencial", "residencial"],
+        "email": ["email", "e-mail", "mail"],
+        "logradouro": ["logradouro", "endereço", "endereco", "rua", "address"],
+        "numero": ["nº", "número", "numero", "num", "n"],
+        "complemento": ["complemento", "compl", "apto", "apartamento"],
+        "cep": ["cep", "zip", "código postal", "codigo postal"],
+        "data_nascimento": ["aniv", "aniversário", "aniversario", "data nascimento", "data nascimento (dd/mm/aaaa)", "nascimento", "birthday"],
+        "nota": ["nota", "observação", "observacao", "note"],
+        "status": ["status", "situação", "situacao"],
+        "comunicacao": ["comunicação", "comunicacao", "contato preferido"],
+        "valor_dizimo": ["valor dízimo", "valor dizimo", "valor", "dízimo", "dizimo"],
+        "estado_civil": ["estado civil", "civil"],
+        "conjuge": ["cônjuge", "conjuge", "spouse"]
+    }
+    
+    # Find column indices
+    col_map = {}
+    for field, aliases in column_aliases.items():
+        for i, header in enumerate(headers):
+            if header in aliases:
+                col_map[field] = i
+                break
+    
+    def get_cell(row, field, default=""):
+        if field in col_map and col_map[field] < len(row):
+            val = row[col_map[field]]
+            return val if val is not None else default
+        return default
+    
     imported = 0
     errors = []
     
     for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), 2):
-        if not row[0]:  # Skip empty rows
+        nome = get_cell(row, "nome", "")
+        if not nome:  # Skip empty rows
             continue
         
         try:
-            # Parse date (column 8 now)
+            # Parse date - handle multiple formats
             data_nasc = ""
-            if len(row) > 8 and row[8]:
-                if isinstance(row[8], datetime):
-                    data_nasc = row[8].strftime("%Y-%m-%d")
+            raw_date = get_cell(row, "data_nascimento", "")
+            if raw_date:
+                if isinstance(raw_date, datetime):
+                    data_nasc = raw_date.strftime("%Y-%m-%d")
                 else:
-                    parts = str(row[8]).split("/")
+                    date_str = str(raw_date).strip()
+                    parts = date_str.replace("-", "/").split("/")
                     if len(parts) == 3:
+                        # DD/MM/YYYY format
                         data_nasc = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                    elif len(parts) == 2:
+                        # DD/MM format (assume current year)
+                        current_year = datetime.now().year
+                        data_nasc = f"{current_year}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
             
-            # Parse valor (column 9 now)
+            # Parse valor - safely handle non-numeric values
             valor = 0.0
-            if len(row) > 9 and row[9]:
-                valor = float(str(row[9]).replace(",", "."))
+            raw_valor = get_cell(row, "valor_dizimo", "")
+            if raw_valor:
+                try:
+                    valor = float(str(raw_valor).replace(",", ".").replace("R$", "").strip())
+                except (ValueError, TypeError):
+                    valor = 0.0
+            
+            # Get nota and status from file or use defaults
+            nota_val = str(get_cell(row, "nota", "")).strip()
+            status_val = str(get_cell(row, "status", "")).strip()
+            comunicacao_val = str(get_cell(row, "comunicacao", "")).strip()
+            
+            # Validate nota
+            valid_notas = ["Novo", "Atualizar", "OK"]
+            if nota_val not in valid_notas:
+                nota_val = "Novo"
+            
+            # Validate status
+            valid_status = ["Ativo", "Pendente", "Inativo"]
+            if status_val not in valid_status:
+                status_val = "Ativo"
+            
+            # Validate comunicacao
+            valid_comunicacao = ["WhatsApp", "Correio", "E-mail", ""]
+            if comunicacao_val not in valid_comunicacao:
+                comunicacao_val = ""
             
             dizimista = {
                 "id": str(uuid.uuid4()),
-                "nome": str(row[0]).strip(),
-                "telefone": str(row[1] or "").strip(),
-                "telefone_residencial": str(row[2] or "").strip(),
-                "email": str(row[3] or "").strip(),
-                "logradouro": str(row[4] or "").strip(),
-                "numero": str(row[5] or "").strip(),
-                "complemento": str(row[6] or "").strip(),
-                "cep": str(row[7] or "").strip(),
+                "nome": str(nome).strip(),
+                "telefone": str(get_cell(row, "telefone", "")).strip(),
+                "telefone_residencial": str(get_cell(row, "telefone_residencial", "")).strip(),
+                "email": str(get_cell(row, "email", "")).strip(),
+                "logradouro": str(get_cell(row, "logradouro", "")).strip(),
+                "numero": str(get_cell(row, "numero", "")).strip(),
+                "complemento": str(get_cell(row, "complemento", "")).strip(),
+                "cep": str(get_cell(row, "cep", "")).strip(),
                 "data_nascimento": data_nasc,
-                "nota": "Novo",
-                "status": "Ativo",
+                "nota": nota_val,
+                "status": status_val,
+                "comunicacao": comunicacao_val,
                 "valor_dizimo": valor,
                 "data_cadastro": datetime.now(timezone.utc).isoformat(),
                 "ultima_contribuicao": ""
