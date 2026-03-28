@@ -454,12 +454,12 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="animate-fade-in" data-testid="card-arrecadado">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado (Mensal)</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado</CardTitle>
                   <DollarSign className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(stats?.total_valor_dizimo)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Soma dos valores de dízimo ativos</p>
+                  <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(stats?.total_arrecadado)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Soma das contribuições</p>
                 </CardContent>
               </Card>
 
@@ -2059,12 +2059,12 @@ const RelatoriosPage = () => {
 
           <Card data-testid="card-total-arrecadado">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado (Mensal)</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Arrecadado</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(resumo?.total_valor_dizimo)}</div>
+              <div className="text-3xl font-bold">{loading ? "-" : formatCurrency(resumo?.total_arrecadado)}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                Soma dos valores de dízimo
+                Soma das contribuições registradas
               </p>
             </CardContent>
           </Card>
