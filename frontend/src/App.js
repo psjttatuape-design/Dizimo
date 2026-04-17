@@ -870,13 +870,13 @@ const DizimistasPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="data_nascimento">Data Nascimento</Label>
                         <Input
-                          id="email"
-                          data-testid="input-email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          id="data_nascimento"
+                          data-testid="input-nascimento"
+                          type="date"
+                          value={formData.data_nascimento}
+                          onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
                         />
                       </div>
                     </div>
@@ -923,13 +923,13 @@ const DizimistasPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="data_nascimento">Data Nascimento</Label>
+                        <Label htmlFor="email">Email</Label>
                         <Input
-                          id="data_nascimento"
-                          data-testid="input-nascimento"
-                          type="date"
-                          value={formData.data_nascimento}
-                          onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                          id="email"
+                          data-testid="input-email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         />
                       </div>
                     </div>
