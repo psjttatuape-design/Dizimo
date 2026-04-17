@@ -901,18 +901,6 @@ const DizimistasPage = () => {
                         />
                       </div>
                       <div className="col-span-4 space-y-2">
-                        <Label htmlFor="cep">CEP</Label>
-                        <Input
-                          id="cep"
-                          data-testid="input-cep"
-                          value={formData.cep}
-                          onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
-                          placeholder="00000-000"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
                         <Label htmlFor="complemento">Complemento</Label>
                         <Input
                           id="complemento"
@@ -920,6 +908,18 @@ const DizimistasPage = () => {
                           value={formData.complemento}
                           onChange={(e) => setFormData({ ...formData, complemento: e.target.value })}
                           placeholder="Apto, Bloco..."
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cep">CEP</Label>
+                        <Input
+                          id="cep"
+                          data-testid="input-cep"
+                          value={formData.cep}
+                          onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                          placeholder="00000-000"
                         />
                       </div>
                       <div className="space-y-2">
