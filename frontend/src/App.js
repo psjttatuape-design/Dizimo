@@ -1148,6 +1148,7 @@ const DizimistasPage = () => {
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     <TableHead>Nome</TableHead>
+                    {canEdit && <TableHead className="text-center">Ações</TableHead>}
                     <TableHead>Celular</TableHead>
                     <TableHead>Tel. Residencial</TableHead>
                     <TableHead>Email</TableHead>
@@ -1155,7 +1156,6 @@ const DizimistasPage = () => {
                     <TableHead>Comunicação</TableHead>
                     <TableHead>Nota</TableHead>
                     <TableHead>Status</TableHead>
-                    {canEdit && <TableHead className="text-right">Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
               <TableBody>
@@ -1175,6 +1175,18 @@ const DizimistasPage = () => {
                   dizimistas.map((dizimista) => (
                     <TableRow key={dizimista.id} data-testid={`row-dizimista-${dizimista.id}`}>
                       <TableCell className="font-medium">{dizimista.nome}</TableCell>
+                      {canEdit && (
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(dizimista)} data-testid={`btn-edit-${dizimista.id}`}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(dizimista.id)} data-testid={`btn-delete-${dizimista.id}`}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>{dizimista.telefone || "-"}</TableCell>
                       <TableCell>{dizimista.telefone_residencial || "-"}</TableCell>
                       <TableCell>{dizimista.email || "-"}</TableCell>
@@ -1204,18 +1216,6 @@ const DizimistasPage = () => {
                           {dizimista.status || "Ativo"}
                         </Badge>
                       </TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(dizimista)} data-testid={`btn-edit-${dizimista.id}`}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(dizimista.id)} data-testid={`btn-delete-${dizimista.id}`}>
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
                     </TableRow>
                   ))
                 )}
