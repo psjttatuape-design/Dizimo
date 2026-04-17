@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, useRef } from "react";
+import { useState, useEffect, createContext, useContext, useRef, useCallback, useMemo } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -35,16 +35,7 @@ const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/auth/me`);
       setUser(response.data);
@@ -55,7 +46,16 @@ const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, [token, fetchUser]);
 
   const login = async (username, password) => {
     const response = await axios.post(`${API}/auth/login`, { username, password });
@@ -349,15 +349,7 @@ const Dashboard = () => {
     { value: "12", label: "Dezembro" }
   ];
 
-  useEffect(() => {
-    if (hasPermission("relatorios", "view")) {
-      fetchData();
-    } else {
-      setLoading(false);
-    }
-  }, [filtros]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch stats
@@ -385,11 +377,19 @@ const Dashboard = () => {
       
       setDizimistas(filteredDizimistas);
     } catch (error) {
-      console.error("Erro ao buscar estatísticas");
+      // Error handled silently
     } finally {
       setLoading(false);
     }
-  };
+  }, [filtros]);
+
+  useEffect(() => {
+    if (hasPermission("relatorios", "view")) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
+  }, [fetchData, hasPermission]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
