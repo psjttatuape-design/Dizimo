@@ -1148,7 +1148,7 @@ const DizimistasPage = () => {
                 <TableHeader className="sticky top-0 bg-background z-10">
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    {canEdit && <TableHead className="text-center">Ações</TableHead>}
+                    {canEdit && <TableHead className="text-center">Editar</TableHead>}
                     <TableHead>Celular</TableHead>
                     <TableHead>Tel. Residencial</TableHead>
                     <TableHead>Email</TableHead>
