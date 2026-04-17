@@ -226,7 +226,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   };
 
   const navItems = [
-    { path: "/", icon: Home, label: "Dashboard", show: hasPermission("dashboard", "view") || user?.role === "admin" },
+    { path: "/", icon: Home, label: "Painel Geral", show: hasPermission("dashboard", "view") || user?.role === "admin" },
     { path: "/dizimistas", icon: Users, label: "Dizimistas", show: hasPermission("dizimistas", "view") },
     { path: "/contribuicoes", icon: DollarSign, label: "Contribuições", show: hasPermission("contribuicoes", "view") },
     { path: "/relatorios", icon: FileText, label: "Relatórios", show: hasPermission("relatorios", "view") },
@@ -411,7 +411,7 @@ const Dashboard = () => {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Painel Geral</h1>
           <p className="text-muted-foreground">Visão geral do sistema de dízimos</p>
         </div>
 
