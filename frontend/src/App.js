@@ -1241,6 +1241,8 @@ const ContribuicoesPage = () => {
   const [showDetailedList, setShowDetailedList] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contribuicaoToDelete, setContribuicaoToDelete] = useState(null);
+  const [dizimistaSearch, setDizimistaSearch] = useState("");
+  const [dizimistaDropdownOpen, setDizimistaDropdownOpen] = useState(false);
   
   // Função para obter valores padrão (data e mês atual)
   const getDefaultFormData = () => {
@@ -1260,6 +1262,21 @@ const ContribuicoesPage = () => {
   const [filtros, setFiltros] = useState({ dizimista_id: "", mes_referencia: "", ano: "" });
   const { hasPermission, user } = useAuth();
   const isAdmin = user?.role === "admin";
+
+  // Filtrar dizimistas pela busca
+  const filteredDizimistas = useMemo(() => {
+    if (!dizimistaSearch) return dizimistas;
+    return dizimistas.filter(d => 
+      d.nome.toLowerCase().includes(dizimistaSearch.toLowerCase())
+    );
+  }, [dizimistas, dizimistaSearch]);
+
+  // Obter nome do dizimista selecionado
+  const selectedDizimistaName = useMemo(() => {
+    if (!formData.dizimista_id) return "";
+    const found = dizimistas.find(d => d.id === formData.dizimista_id);
+    return found ? found.nome : "";
+  }, [formData.dizimista_id, dizimistas]);
 
   const meses = [
     { value: "1", label: "Janeiro" },
@@ -1368,6 +1385,7 @@ const ContribuicoesPage = () => {
       setDialogOpen(false);
       setEditingContribuicao(null);
       setFormData(getDefaultFormData());
+      setDizimistaSearch("");
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || "Erro ao salvar");
@@ -1489,7 +1507,9 @@ const ContribuicoesPage = () => {
                 setDialogOpen(open); 
                 if (!open) { 
                   setEditingContribuicao(null); 
-                  setFormData(getDefaultFormData()); 
+                  setFormData(getDefaultFormData());
+                  setDizimistaSearch("");
+                  setDizimistaDropdownOpen(false);
                 } 
               }}>
                 <DialogTrigger asChild>
@@ -1506,20 +1526,44 @@ const ContribuicoesPage = () => {
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="dizimista_id">Dizimista *</Label>
-                      <Select 
-                        value={formData.dizimista_id} 
-                        onValueChange={(v) => setFormData({ ...formData, dizimista_id: v })}
-                        disabled={!!editingContribuicao}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o dizimista" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {dizimistas.map(d => (
-                            <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="relative">
+                        <Input
+                          placeholder="Digite para buscar dizimista..."
+                          value={editingContribuicao ? selectedDizimistaName : dizimistaSearch || selectedDizimistaName}
+                          onChange={(e) => {
+                            setDizimistaSearch(e.target.value);
+                            setDizimistaDropdownOpen(true);
+                            if (!e.target.value) {
+                              setFormData({ ...formData, dizimista_id: "" });
+                            }
+                          }}
+                          onFocus={() => setDizimistaDropdownOpen(true)}
+                          disabled={!!editingContribuicao}
+                          className="w-full"
+                        />
+                        {dizimistaDropdownOpen && !editingContribuicao && filteredDizimistas.length > 0 && (
+                          <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto">
+                            {filteredDizimistas.slice(0, 50).map(d => (
+                              <div
+                                key={d.id}
+                                className="px-3 py-2 cursor-pointer hover:bg-muted transition-colors"
+                                onClick={() => {
+                                  setFormData({ ...formData, dizimista_id: d.id });
+                                  setDizimistaSearch(d.nome);
+                                  setDizimistaDropdownOpen(false);
+                                }}
+                              >
+                                {d.nome}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {dizimistaDropdownOpen && !editingContribuicao && dizimistaSearch && filteredDizimistas.length === 0 && (
+                          <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg p-3 text-muted-foreground">
+                            Nenhum dizimista encontrado
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
