@@ -961,18 +961,7 @@ const DizimistasPage = () => {
                         </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="valor_dizimo">Valor Dízimo (R$)</Label>
-                        <Input
-                          id="valor_dizimo"
-                          data-testid="input-valor"
-                          type="number"
-                          step="0.01"
-                          value={formData.valor_dizimo}
-                          onChange={(e) => setFormData({ ...formData, valor_dizimo: parseFloat(e.target.value) || 0 })}
-                        />
-                      </div>
+                    <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="comunicacao">Comunicação</Label>
                         <Select value={formData.comunicacao || "nenhum"} onValueChange={(v) => setFormData({ ...formData, comunicacao: v === "nenhum" ? "" : v })}>
