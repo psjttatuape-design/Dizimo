@@ -107,7 +107,7 @@ class DizimistaBase(BaseModel):
     modo_contribuicao: str = ""  # PIX, Envelope, Depósito
     mes_contribuicao: str = ""  # Mês preferencial de contribuição
     comunicacao: str = ""  # WhatsApp, Correio, E-mail
-    valor_dizimo: float = 0.0
+    valor_dizimo: float = Field(default=0.0, ge=0, le=1000000, description="Valor do dízimo (0 a 1.000.000)")
     data_cadastro: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     ultima_contribuicao: str = ""
 
@@ -128,7 +128,7 @@ class DizimistaCreate(BaseModel):
     modo_contribuicao: str = ""
     mes_contribuicao: str = ""
     comunicacao: str = ""
-    valor_dizimo: float = 0.0
+    valor_dizimo: float = Field(default=0.0, ge=0, le=1000000, description="Valor do dízimo (0 a 1.000.000)")
 
 class DizimistaUpdate(BaseModel):
     nome: Optional[str] = None
@@ -147,27 +147,27 @@ class DizimistaUpdate(BaseModel):
     modo_contribuicao: Optional[str] = None
     mes_contribuicao: Optional[str] = None
     comunicacao: Optional[str] = None
-    valor_dizimo: Optional[float] = None
+    valor_dizimo: Optional[float] = Field(default=None, ge=0, le=1000000, description="Valor do dízimo (0 a 1.000.000)")
 
 class ContribuicaoBase(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     dizimista_id: str
     dizimista_nome: str = ""  # Para facilitar visualização
-    valor: float
+    valor: float = Field(gt=0, le=1000000, description="Valor da contribuição (maior que 0, até 1.000.000)")
     data: str = Field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%d"))
     mes_referencia: str = ""  # Mês de referência da contribuição
     meio: str = ""  # Envelope, Pix/Depósito, Presencial
 
 class ContribuicaoCreate(BaseModel):
     dizimista_id: str
-    valor: float
+    valor: float = Field(gt=0, le=1000000, description="Valor da contribuição (maior que 0, até 1.000.000)")
     data: Optional[str] = None
     mes_referencia: str = ""
     meio: str = ""
 
 class ContribuicaoUpdate(BaseModel):
-    valor: Optional[float] = None
+    valor: Optional[float] = Field(default=None, gt=0, le=1000000, description="Valor da contribuição (maior que 0, até 1.000.000)")
     data: Optional[str] = None
     mes_referencia: Optional[str] = None
     meio: Optional[str] = None
@@ -175,20 +175,20 @@ class ContribuicaoUpdate(BaseModel):
 class ValorMensalBase(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    mes: int  # 1-12
-    ano: int
-    valor: float
+    mes: int = Field(ge=1, le=12, description="Mês (1-12)")
+    ano: int = Field(ge=2000, le=2100, description="Ano (2000-2100)")
+    valor: float = Field(gt=0, le=1000000, description="Valor mensal (maior que 0, até 1.000.000)")
     observacao: str = ""
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class ValorMensalCreate(BaseModel):
-    mes: int
-    ano: int
-    valor: float
+    mes: int = Field(ge=1, le=12, description="Mês (1-12)")
+    ano: int = Field(ge=2000, le=2100, description="Ano (2000-2100)")
+    valor: float = Field(gt=0, le=1000000, description="Valor mensal (maior que 0, até 1.000.000)")
     observacao: str = ""
 
 class ValorMensalUpdate(BaseModel):
-    valor: Optional[float] = None
+    valor: Optional[float] = Field(default=None, gt=0, le=1000000, description="Valor mensal (maior que 0, até 1.000.000)")
     observacao: Optional[str] = None
 
 # Helper functions
