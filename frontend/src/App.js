@@ -327,7 +327,9 @@ const Layout = ({ children }) => {
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [dizimistas, setDizimistas] = useState([]);
+  const [allDizimistas, setAllDizimistas] = useState([]);
   const [valoresMensais, setValoresMensais] = useState([]);
+  const [contribuicoes, setContribuicoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtros, setFiltros] = useState({ nota: "", status: "", mes_contribuicao: "" });
   const { hasPermission } = useAuth();
@@ -359,16 +361,24 @@ const Dashboard = () => {
       // Fetch valores mensais para calcular total do ano
       const valoresRes = await axios.get(`${API}/valores-mensais`);
       setValoresMensais(valoresRes.data);
+
+      // Fetch contribuições para contar do ano atual
+      const contribRes = await axios.get(`${API}/contribuicoes`);
+      setContribuicoes(contribRes.data);
       
-      // Fetch dizimistas with filters
-      let url = `${API}/dizimistas?`;
-      if (filtros.nota && filtros.nota !== "todos") url += `nota=${filtros.nota}&`;
-      if (filtros.status && filtros.status !== "todos") url += `status=${filtros.status}&`;
+      // Fetch ALL dizimistas first (sem filtros)
+      const allDizRes = await axios.get(`${API}/dizimistas`);
+      setAllDizimistas(allDizRes.data);
       
-      const dizRes = await axios.get(url);
-      let filteredDizimistas = dizRes.data;
+      // Apply filters on client side for display
+      let filteredDizimistas = allDizRes.data;
       
-      // Filter by mes_contribuicao on client side
+      if (filtros.nota && filtros.nota !== "todos") {
+        filteredDizimistas = filteredDizimistas.filter(d => d.nota === filtros.nota);
+      }
+      if (filtros.status && filtros.status !== "todos") {
+        filteredDizimistas = filteredDizimistas.filter(d => d.status === filtros.status);
+      }
       if (filtros.mes_contribuicao && filtros.mes_contribuicao !== "todos") {
         filteredDizimistas = filteredDizimistas.filter(d => 
           d.mes_contribuicao === filtros.mes_contribuicao
@@ -406,6 +416,21 @@ const Dashboard = () => {
   const totalAnoAtual = valoresMensais
     .filter(v => v.ano === currentYear)
     .reduce((sum, v) => sum + (v.valor || 0), 0);
+
+  // Calcular contribuições do ano atual
+  const contribuicoesAnoAtual = contribuicoes.filter(c => {
+    if (!c.data) return false;
+    const ano = parseInt(c.data.substring(0, 4));
+    return ano === currentYear;
+  });
+
+  // Estatísticas baseadas em TODOS os dizimistas (não filtrados)
+  const statsFromAllDizimistas = {
+    total: allDizimistas.length,
+    ativos: allDizimistas.filter(d => d.status === "Ativo").length,
+    pendentes: allDizimistas.filter(d => d.status === "Pendente").length,
+    inativos: allDizimistas.filter(d => d.status === "Inativo").length
+  };
 
   return (
     <Layout>
@@ -477,12 +502,12 @@ const Dashboard = () => {
 
               <Card className="animate-fade-in animate-delay-100" data-testid="card-contribuicoes">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Contribuições Registradas</CardTitle>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Contribuições Registradas ({currentYear})</CardTitle>
                   <TrendingUp className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{loading ? "-" : stats?.total_contribuicoes || 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Registros no sistema</p>
+                  <div className="text-3xl font-bold">{loading ? "-" : contribuicoesAnoAtual.length}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Registros do ano atual</p>
                 </CardContent>
               </Card>
             </div>
