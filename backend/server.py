@@ -796,6 +796,15 @@ async def create_contribuicao(data: ContribuicaoCreate, current_user: dict = Dep
         }}
     )
     
+    # Auto-atualizar valor mensal
+    if data.mes_referencia and contribuicao_data.get("data"):
+        try:
+            mes = int(data.mes_referencia)
+            ano = int(contribuicao_data["data"][:4])
+            await atualizar_valor_mensal(mes, ano)
+        except (ValueError, TypeError):
+            pass
+    
     return contribuicao
 
 @api_router.put("/contribuicoes/{contribuicao_id}")
@@ -819,11 +828,65 @@ async def delete_contribuicao(contribuicao_id: str, current_user: dict = Depends
     if not check_permission(current_user, "dizimistas", "edit"):
         raise HTTPException(status_code=403, detail="Sem permissão para excluir contribuições")
     
+    # Buscar contribuição antes de deletar para saber o mês/ano
+    contrib = await db.contribuicoes.find_one({"id": contribuicao_id})
+    
     result = await db.contribuicoes.delete_one({"id": contribuicao_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Contribuição não encontrada")
     
+    # Recalcular valor mensal após exclusão
+    if contrib and contrib.get("mes_referencia") and contrib.get("data"):
+        try:
+            mes = int(contrib["mes_referencia"])
+            ano = int(contrib["data"][:4])
+            await atualizar_valor_mensal(mes, ano)
+        except (ValueError, TypeError):
+            pass
+    
     return {"message": "Contribuição excluída"}
+
+# Helper function to update monthly value based on contributions
+async def atualizar_valor_mensal(mes: int, ano: int):
+    """Recalcula o valor mensal baseado nas contribuições do mês"""
+    contribuicoes = await db.contribuicoes.find({}, {"_id": 0}).to_list(10000)
+    
+    # Filtrar contribuições do mês/ano específico
+    total = 0
+    for c in contribuicoes:
+        mes_ref = c.get("mes_referencia", "")
+        data = c.get("data", "")
+        if mes_ref and data:
+            try:
+                contrib_mes = int(mes_ref)
+                contrib_ano = int(data[:4])
+                if contrib_mes == mes and contrib_ano == ano:
+                    total += c.get("valor", 0)
+            except (ValueError, TypeError):
+                pass
+    
+    # Atualizar ou criar valor mensal
+    existing = await db.valores_mensais.find_one({"mes": mes, "ano": ano})
+    if total > 0:
+        if existing:
+            await db.valores_mensais.update_one(
+                {"mes": mes, "ano": ano},
+                {"$set": {"valor": total}}
+            )
+        else:
+            novo = {
+                "id": str(uuid.uuid4()),
+                "mes": mes,
+                "ano": ano,
+                "valor": total,
+                "observacao": "Auto-calculado",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.valores_mensais.insert_one(novo)
+    elif existing and total == 0:
+        # Se não há mais contribuições, remover o valor mensal auto-calculado
+        if existing.get("observacao") == "Auto-calculado":
+            await db.valores_mensais.delete_one({"mes": mes, "ano": ano})
 
 # Update dizimistas status based on contributions
 async def update_all_dizimistas_status():
