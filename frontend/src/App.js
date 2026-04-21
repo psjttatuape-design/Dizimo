@@ -1263,12 +1263,16 @@ const ContribuicoesPage = () => {
   const { hasPermission, user } = useAuth();
   const isAdmin = user?.role === "admin";
 
-  // Filtrar dizimistas pela busca
+  // Filtrar dizimistas pela busca e ordenar alfabeticamente
   const filteredDizimistas = useMemo(() => {
-    if (!dizimistaSearch) return dizimistas;
-    return dizimistas.filter(d => 
-      d.nome.toLowerCase().includes(dizimistaSearch.toLowerCase())
-    );
+    let result = dizimistas;
+    if (dizimistaSearch) {
+      result = dizimistas.filter(d => 
+        d.nome.toLowerCase().includes(dizimistaSearch.toLowerCase())
+      );
+    }
+    // Ordenar alfabeticamente pelo nome
+    return result.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   }, [dizimistas, dizimistaSearch]);
 
   // Obter nome do dizimista selecionado
@@ -1798,7 +1802,7 @@ const ContribuicoesPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos os Dizimistas</SelectItem>
-                    {dizimistas.map(d => (
+                    {[...dizimistas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(d => (
                       <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
                     ))}
                   </SelectContent>
