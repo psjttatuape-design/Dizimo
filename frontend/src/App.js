@@ -209,6 +209,11 @@ const LoginPage = () => {
             </Button>
           </form>
         </div>
+        
+        {/* Versão */}
+        <div className="absolute bottom-4 left-4 text-sm text-muted-foreground">
+          Versão 1.0.0
+        </div>
       </div>
     </div>
   );
