@@ -627,6 +627,7 @@ const DizimistasPage = () => {
     nome: "", telefone: "", telefone_residencial: "", email: "", 
     logradouro: "", numero: "", complemento: "", cep: "",
     data_nascimento: "", estado_civil: "", nome_conjuge: "",
+    co_dizimista: "", co_dizimista_aniversario: "",
     nota: "Novo", status: "Ativo", 
     comunicacao: "", valor_dizimo: 0 
   });
@@ -687,6 +688,7 @@ const DizimistasPage = () => {
         nome: "", telefone: "", telefone_residencial: "", email: "", 
         logradouro: "", numero: "", complemento: "", cep: "",
         data_nascimento: "", estado_civil: "", nome_conjuge: "",
+    co_dizimista: "", co_dizimista_aniversario: "",
         nota: "Novo", status: "Ativo", 
         comunicacao: "", valor_dizimo: 0 
       });
@@ -710,6 +712,8 @@ const DizimistasPage = () => {
       data_nascimento: dizimista.data_nascimento || "",
       estado_civil: dizimista.estado_civil || "",
       nome_conjuge: dizimista.nome_conjuge || "",
+      co_dizimista: dizimista.co_dizimista || "",
+      co_dizimista_aniversario: dizimista.co_dizimista_aniversario || "",
       nota: dizimista.nota || "Novo",
       status: dizimista.status || "Ativo",
       comunicacao: dizimista.comunicacao || "",
@@ -990,6 +994,28 @@ const DizimistasPage = () => {
                           />
                         </div>
                       )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="co_dizimista">Co-Dizimista</Label>
+                        <Input
+                          id="co_dizimista"
+                          data-testid="input-co-dizimista"
+                          value={formData.co_dizimista}
+                          onChange={(e) => setFormData({ ...formData, co_dizimista: e.target.value })}
+                          placeholder="Nome do co-dizimista"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="co_dizimista_aniversario">Aniversário Co-Dizimista</Label>
+                        <Input
+                          id="co_dizimista_aniversario"
+                          data-testid="input-co-dizimista-aniversario"
+                          type="date"
+                          value={formData.co_dizimista_aniversario}
+                          onChange={(e) => setFormData({ ...formData, co_dizimista_aniversario: e.target.value })}
+                        />
+                      </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">

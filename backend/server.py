@@ -102,6 +102,8 @@ class DizimistaBase(BaseModel):
     data_nascimento: str = ""
     estado_civil: str = ""  # Solteiro, Casado, Outros
     nome_conjuge: str = ""  # Nome do cônjuge (quando casado)
+    co_dizimista: str = ""  # Nome do co-dizimista
+    co_dizimista_aniversario: str = ""  # Aniversário do co-dizimista
     nota: str = "Novo"  # Atualizar, Novo, OK
     status: str = "Ativo"  # Ativo, Pendente, Inativo
     modo_contribuicao: str = ""  # PIX, Envelope, Depósito
@@ -123,6 +125,8 @@ class DizimistaCreate(BaseModel):
     data_nascimento: str = ""
     estado_civil: str = ""
     nome_conjuge: str = ""
+    co_dizimista: str = ""
+    co_dizimista_aniversario: str = ""
     nota: str = "Novo"
     status: str = "Ativo"
     modo_contribuicao: str = ""
@@ -142,6 +146,8 @@ class DizimistaUpdate(BaseModel):
     data_nascimento: Optional[str] = None
     estado_civil: Optional[str] = None
     nome_conjuge: Optional[str] = None
+    co_dizimista: Optional[str] = None
+    co_dizimista_aniversario: Optional[str] = None
     nota: Optional[str] = None
     status: Optional[str] = None
     modo_contribuicao: Optional[str] = None
