@@ -435,7 +435,9 @@ async def import_dizimistas_excel(file: UploadFile = File(...), current_user: di
         "comunicacao": ["comunicação", "comunicacao", "contato preferido"],
         "valor_dizimo": ["valor dízimo", "valor dizimo", "valor", "dízimo", "dizimo"],
         "estado_civil": ["estado civil", "civil"],
-        "conjuge": ["cônjuge", "conjuge", "spouse"]
+        "conjuge": ["cônjuge", "conjuge", "spouse"],
+        "co_dizimista": ["co-dizimista", "co dizimista", "codizimista", "co_dizimista"],
+        "co_dizimista_aniversario": ["aniv. co-dizimista", "aniversário co-dizimista", "aniv co-dizimista", "aniversario co-dizimista", "co_dizimista_aniversario"]
     }
     
     # Find column indices
@@ -507,6 +509,21 @@ async def import_dizimistas_excel(file: UploadFile = File(...), current_user: di
             if comunicacao_val not in valid_comunicacao:
                 comunicacao_val = ""
             
+            # Parse co_dizimista_aniversario date
+            co_diz_aniv = ""
+            raw_co_date = get_cell(row, "co_dizimista_aniversario", "")
+            if raw_co_date:
+                if isinstance(raw_co_date, datetime):
+                    co_diz_aniv = raw_co_date.strftime("%Y-%m-%d")
+                else:
+                    date_str = str(raw_co_date).strip()
+                    parts = date_str.replace("-", "/").split("/")
+                    if len(parts) == 3:
+                        co_diz_aniv = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                    elif len(parts) == 2:
+                        current_year = datetime.now().year
+                        co_diz_aniv = f"{current_year}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+            
             dizimista = {
                 "id": str(uuid.uuid4()),
                 "nome": str(nome).strip(),
@@ -518,6 +535,8 @@ async def import_dizimistas_excel(file: UploadFile = File(...), current_user: di
                 "complemento": str(get_cell(row, "complemento", "")).strip(),
                 "cep": str(get_cell(row, "cep", "")).strip(),
                 "data_nascimento": data_nasc,
+                "co_dizimista": str(get_cell(row, "co_dizimista", "")).strip(),
+                "co_dizimista_aniversario": co_diz_aniv,
                 "nota": nota_val,
                 "status": status_val,
                 "comunicacao": comunicacao_val,
@@ -576,7 +595,7 @@ async def export_dizimistas_excel(
         top=Side(style='thin'), bottom=Side(style='thin')
     )
     
-    headers = ["Nome", "Celular", "Tel. Residencial", "Email", "Logradouro", "Nº", "Complemento", "CEP", "Aniversário", "Nota", "Status", "Estado Civil", "Cônjuge", "Comunicação"]
+    headers = ["Nome", "Co-Dizimista", "Aniv. Co-Dizimista", "Celular", "Tel. Residencial", "Email", "Logradouro", "Nº", "Complemento", "CEP", "Aniversário", "Nota", "Status", "Estado Civil", "Cônjuge", "Comunicação"]
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
         cell.font = header_font
@@ -585,19 +604,21 @@ async def export_dizimistas_excel(
         cell.border = thin_border
     
     ws.column_dimensions['A'].width = 30
-    ws.column_dimensions['B'].width = 15
+    ws.column_dimensions['B'].width = 25
     ws.column_dimensions['C'].width = 15
-    ws.column_dimensions['D'].width = 25
-    ws.column_dimensions['E'].width = 30
-    ws.column_dimensions['F'].width = 8
-    ws.column_dimensions['G'].width = 15
-    ws.column_dimensions['H'].width = 12
-    ws.column_dimensions['I'].width = 12
-    ws.column_dimensions['J'].width = 10
-    ws.column_dimensions['K'].width = 10
-    ws.column_dimensions['L'].width = 12
-    ws.column_dimensions['M'].width = 25
+    ws.column_dimensions['D'].width = 15
+    ws.column_dimensions['E'].width = 15
+    ws.column_dimensions['F'].width = 25
+    ws.column_dimensions['G'].width = 30
+    ws.column_dimensions['H'].width = 8
+    ws.column_dimensions['I'].width = 15
+    ws.column_dimensions['J'].width = 12
+    ws.column_dimensions['K'].width = 12
+    ws.column_dimensions['L'].width = 10
+    ws.column_dimensions['M'].width = 10
     ws.column_dimensions['N'].width = 12
+    ws.column_dimensions['O'].width = 25
+    ws.column_dimensions['P'].width = 12
     
     for row_num, d in enumerate(dizimistas, 2):
         # Format birthday
@@ -610,8 +631,20 @@ async def export_dizimistas_excel(
             except:
                 pass
         
+        # Format co-dizimista birthday
+        co_diz_aniversario = ""
+        if d.get("co_dizimista_aniversario"):
+            try:
+                parts = d["co_dizimista_aniversario"].split("-")
+                if len(parts) == 3:
+                    co_diz_aniversario = f"{parts[2]}/{parts[1]}"
+            except:
+                pass
+        
         values = [
             d.get("nome", ""),
+            d.get("co_dizimista", ""),
+            co_diz_aniversario,
             d.get("telefone", ""),
             d.get("telefone_residencial", ""),
             d.get("email", ""),
