@@ -1,0 +1,59 @@
+{
+  "summary": "Backend regression testing after the modular refactor (server.py → routes/* + services/*). 17/17 pytest cases passed. All endpoints behave identically to pre-refactor and Pydantic validations still trigger 422 for invalid contribuição values. Auto-sync of valores_mensais on POST/DELETE /api/contribuicoes confirmed working. Dizimistas count == 156 as expected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/health -> 200 {status: healthy}",
+    "POST /api/auth/login (admin/admin123) -> 200 with access_token + user (no password)",
+    "POST /api/auth/login (wrong pwd) -> 401",
+    "GET /api/auth/me without token -> 401/403",
+    "GET /api/auth/me with token -> 200, returns admin user",
+    "GET /api/users (admin) -> 200, list contains admin, no _id and no password leaked",
+    "GET /api/dizimistas -> 200, returns 156 records, no _id, has id+nome",
+    "GET /api/dizimistas/template/excel -> 200 xlsx (PK magic bytes)",
+    "GET /api/dizimistas/export/excel -> 200 xlsx",
+    "GET /api/contribuicoes -> 200, dizimista_nome resolved",
+    "POST /api/contribuicoes valor=0 -> 422 (Pydantic gt=0)",
+    "POST /api/contribuicoes valor=-10 -> 422",
+    "POST /api/contribuicoes valid -> 200, auto-sync creates entry in valores_mensais (mes=1, ano=2026), DELETE removes it",
+    "POST /api/contribuicoes/sincronizar-valores-mensais (admin) -> 200 with message+totais",
+    "GET /api/valores-mensais -> 200 list",
+    "GET /api/relatorios/resumo -> 200 with all required keys (total_dizimistas, dizimistas_ativos, dizimistas_pendentes, dizimistas_inativos, total_arrecadado, por_mes)",
+    "GET /api/relatorios/contribuicoes -> 200, dizimista_nome populated"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_refactor_backend.py",
+    "/app/test_reports/pytest/refactor_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "auth.py: jwt.JWTError import path - works because PyJWT exposes it, but jwt.InvalidTokenError is the canonical exception. Not breaking, just style.",
+    "server.py: uses deprecated FastAPI @app.on_event('startup'/'shutdown'); consider migrating to lifespan handlers (no functional impact).",
+    "server.py: imports `APIRouter`, `uuid`, `datetime` and `Path` not strictly needed at top scope after refactor — only `uuid`/`datetime`/`hash_password` are used inside startup. Minor cleanup.",
+    "routes/dizimistas.py POST /import/excel does not call atomic insert_many and silently inserts even when parse_workbook returns errors — consider partial rollback or transaction wrapping (pre-existing behavior, not introduced by refactor).",
+    "auth.py SECRET_KEY has a default fallback string; for production hygiene it should fail fast if JWT_SECRET is missing (low priority)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_refactor_backend.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "not tested (per request)"
+  },
+  "test_credentials": {
+    "username": "admin",
+    "password": "admin123",
+    "note": "/app/memory/test_credentials.md is missing — credentials were taken from review_request and verified working."
+  },
+  "seed_data_creation": "One transient contribuição (valor=12.34, mes_referencia=1, data=2026-01-15) was created and then deleted within the same test. No residual test data.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Refactor is functionally clean. server.py is a slim entry point (83 lines), routes are split per-resource, services hold excel/sync logic. All API paths still under /api/* prefix. Pydantic validations preserved. Frontend was explicitly out of scope for this run. If frontend tested next, verify token storage location: should be sessionStorage under key 'psjt.auth.token' (not localStorage) per the XSS-mitigation requirement."
+}
