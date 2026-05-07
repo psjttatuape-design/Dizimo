@@ -1,108 +1,97 @@
-# PRD - Sistema de Gestão de Dízimos PSJT
+# PRD - Sistema de Gestão de Dízimos (Paróquia São Judas Tadeu)
 
-## Problem Statement Original
-Adicionar uma aba de configuração para definir administrador e usuários e suas respectivas permissões de que campos podem acessar ou alterar.
+## Original Problem Statement
+Clonar repositório `goncalezromeo-tech/Dizimo-PSJT`, corrigir bugs iniciais e
+iterativamente adicionar features (import/export Excel, layouts, validações,
+auto-sync de contribuições para o relatório mensal).
 
-## User Choices
-- Controle de campos e páginas
-- Níveis de permissão: apenas visualizar, visualizar e editar, acesso total
-- Criar sistema de login (administrador cria usuário e login)
-- Apenas Admin e Usuário
-- Permissões específicas: editar Dizimistas e abrir Relatórios
+## Stack
+- Frontend: React + Tailwind + shadcn/ui + Recharts + axios + Sonner
+- Backend: FastAPI + Motor (MongoDB) + Pydantic + openpyxl + JWT (passlib/bcrypt)
+- DB: MongoDB
 
-## Architecture
-- **Frontend**: React.js + Tailwind CSS + shadcn/ui
-- **Backend**: FastAPI + MongoDB
-- **Auth**: JWT tokens com bcrypt para hash de senhas
+## Code Architecture (post Feb-2026 refactor)
+```
+/app/
+├── backend/
+│   ├── server.py            # Slim entrypoint (CORS + router includes + admin seed)
+│   ├── db.py                # Motor client
+│   ├── auth.py              # JWT, hash, get_current_user, check_permission
+│   ├── models.py            # Pydantic models
+│   ├── routes/
+│   │   ├── auth_routes.py
+│   │   ├── users.py
+│   │   ├── dizimistas.py
+│   │   ├── contribuicoes.py
+│   │   ├── valores_mensais.py
+│   │   └── relatorios.py
+│   ├── services/
+│   │   ├── excel_service.py # template/parse/export workbooks
+│   │   └── sync_service.py  # atualizar_valor_mensal + status updates
+│   └── tests/
+│       └── test_refactor_backend.py
+└── frontend/src/
+    ├── App.js               # Slim router (33 lines)
+    ├── lib/
+    │   ├── api.js           # BACKEND_URL + axios re-export
+    │   └── tokenStorage.js  # in-memory + sessionStorage (XSS-hardening)
+    ├── contexts/AuthContext.jsx
+    ├── components/
+    │   ├── ProtectedRoute.jsx
+    │   └── layout/{Sidebar,Layout}.jsx
+    ├── constants/meses.js
+    └── pages/
+        ├── Login.jsx
+        ├── PainelGeral.jsx
+        ├── Dizimistas.jsx
+        ├── Contribuicoes.jsx
+        ├── Relatorios.jsx
+        └── Configuracoes.jsx
+```
 
-## User Personas
-1. **Administrador**: Acesso total ao sistema, gerencia usuários e permissões
-2. **Usuário Comum**: Acesso controlado baseado em permissões configuradas pelo admin
+## Core Modules
+- **Auth**: JWT (24h), passlib bcrypt. Admin seed em startup (`admin/admin123`).
+- **Dizimistas**: CRUD + import/export Excel (15+ campos: nome, contatos,
+  endereço, co-dizimista, status, nota, comunicação, valor_dizimo).
+- **Contribuições**: CRUD + auto-sync (`atualizar_valor_mensal` recalcula
+  `valores_mensais` em cada POST/DELETE).
+- **Relatórios**: resumo agregado, gráfico 15 meses, histórico filtrável.
+- **Configurações**: admin gerencia usuários e permissões granulares.
 
-## Core Requirements (Static)
-- [x] Sistema de autenticação (login/logout)
-- [x] CRUD de usuários (apenas admin)
-- [x] Sistema de permissões granular
-- [x] CRUD de dizimistas (baseado em permissões)
-- [x] Visualização de relatórios (baseado em permissões)
-- [x] Aba de configurações para gerenciar usuários e permissões
+## DB Schemas
+- `users`: id, username, password (hash), name, role, permissions, active, created_at
+- `dizimistas`: id, nome, telefone, telefone_residencial, email, logradouro, numero,
+  complemento, cep, data_nascimento, estado_civil, nome_conjuge, co_dizimista,
+  co_dizimista_aniversario, nota, status, comunicacao, valor_dizimo, ultima_contribuicao
+- `contribuicoes`: id, dizimista_id, dizimista_nome, valor, data, mes_referencia, meio
+- `valores_mensais`: id, mes, ano, valor, observacao, created_at
 
-## What's Been Implemented
+## Key Endpoints (`/api/*`)
+- `POST /auth/login` · `GET /auth/me`
+- `GET|POST|PUT|DELETE /users` (admin)
+- `GET|POST|PUT|DELETE /dizimistas` + `template/excel` + `import/excel` + `export/excel`
+- `GET|POST|PUT|DELETE /contribuicoes` + `resumo-por-mes` + `sincronizar-valores-mensais`
+- `GET|POST|PUT|DELETE /valores-mensais`
+- `GET /relatorios/resumo` · `GET /relatorios/contribuicoes`
 
-### Março 2026 - Sessão Atual (Últimas Alterações)
-- **Campo Comunicação** adicionado em Dizimistas com opções: WhatsApp, Correio, E-mail
-- **Filtro por Nome** na página de Dizimistas (busca parcial, case insensitive)
-- **Relatório Atualizado** - calcula automaticamente o total arrecadado baseado nos valores de dízimo dos dizimistas ativos
-- **Limpeza do banco** de dizimistas realizada (lista pronta para nova importação)
+## Implemented (Changelog summary)
+- 2026-02 — **Refactor P1**: server.py 1256→83 lines · App.js 2917→33 lines
+- 2026-02 — **Security**: tokens migrados de `localStorage` → in-memory + `sessionStorage`
+  (chave `psjt.auth.token`). Limpa legacy localStorage automaticamente.
+- 2026-02 — **Auto-sync** Contribuições ↔ Valores Mensais
+- 2026-02 — Co-dizimista (UI + Excel) · Pydantic validations (gt=0, le=1M)
+- 2026-02 — Painel Geral restrito ao ano vigente · Versão 1.0.1 no login
 
-### Janeiro 2026 - MVP Inicial
-- Login Page com logo da Paróquia São Judas Tadeu, cores institucionais
-- Dashboard com cards de estatísticas
-- Página Dizimistas com CRUD completo
-- Página Relatórios com gráficos e histórico
-- Aba Configurações para gerenciar usuários e permissões
-- Sistema de permissões granular
+## Pending / Backlog
+- **P2 backlog**:
+  - Garantir que `JWT_SECRET` falhe rápido em produção se ausente (remover fallback default)
+  - `import/excel` rollback/transactional behavior em caso de erros parciais
+  - Migrar `@app.on_event` deprecated → `lifespan` handlers
+- **Open user-side**: validar produção via "Deploy" no Emergent
 
-### Janeiro 2026 - Melhorias
-- Excel import/export para dizimistas
-- Campo "Nota" editável (Novo, Atualizar, OK)
-- Campo "Status" editável com automação (Ativo, Pendente, Inativo)
-- Filtros avançados na página de Dizimistas (Status, Nota, Aniversário)
-- Refatoração dos campos de endereço (Logradouro, Número, Complemento, CEP)
-- Campo telefone residencial
-- Gráfico de 15 meses com linha de média
+## Testing
+- Backend smoke + regression: `/app/backend/tests/test_refactor_backend.py` (17/17 passing)
+- Frontend regression: validado via screenshot (login → painel → dizimistas → contribuições → relatórios)
 
-### Dezembro 2025 - P0 Features
-- **Dashboard Filters**: Filtros de Status, Nota e Mês de Contribuição com contagem de dizimistas
-- **Novos Campos Dizimista**: modo_contribuicao (PIX, Envelope, Depósito) e mes_contribuicao
-- **Exportação com Filtros**: Diálogo mostra filtros ativos, exporta usando mesmos filtros da listagem
-
-## API Endpoints
-- POST /api/auth/login - Login
-- GET /api/auth/me - Usuário atual
-- GET/POST/PUT/DELETE /api/users - CRUD usuários (admin only)
-- PUT /api/users/{id}/permissions - Atualizar permissões
-- GET/POST/PUT/DELETE /api/dizimistas - CRUD dizimistas (com filtro por nome)
-- GET /api/dizimistas/template/excel - Template para importação
-- POST /api/dizimistas/import/excel - Importar dizimistas via Excel
-- GET /api/dizimistas/export/excel - Exportar dizimistas (com filtros)
-- GET/POST /api/contribuicoes - Contribuições
-- GET /api/relatorios/resumo - Resumo estatístico (inclui total_valor_dizimo)
-- GET /api/relatorios/contribuicoes - Lista de contribuições
-- GET/POST/PUT/DELETE /api/valores-mensais - Valores mensais históricos
-
-## Database Schema
-- **users**: id, username, password, name, role, permissions, active, created_at
-- **dizimistas**: id, nome, telefone, telefone_residencial, email, logradouro, numero, complemento, cep, data_nascimento, nota, status, modo_contribuicao, mes_contribuicao, **comunicacao**, valor_dizimo, data_cadastro, ultima_contribuicao
-- **contribuicoes**: id, dizimista_id, valor, data, observacao
-- **valores_mensais**: id, mes, ano, valor, observacao, created_at
-
-## Credenciais Padrão
-- **Usuário**: admin
-- **Senha**: admin123
-
-## URL do Sistema
-- **Preview**: https://psjt-dizimo.preview.emergentagent.com
-
-## Logo da Paróquia
-https://customer-assets.emergentagent.com/job_permission-manager-8/artifacts/hr97hygf_Logo%20PSJT.jpg
-
-## Next Tasks / Backlog
-
-### P1 - Alta Prioridade
-- Exportar relatórios em PDF
-- Registrar contribuições individuais por dizimista
-- Cron job para atualização automática de status
-
-### P2 - Média Prioridade  
-- ~~Barra de pesquisa por nome na lista de dizimistas~~ ✅ FEITO
-- Reset de senha por admin
-- Comparativo ano a ano nos relatórios
-
-### P3 - Baixa Prioridade
-- Notificações por email
-- Relatórios customizados
-
-## Refactoring Needed
-- **Crítico**: frontend/src/App.js tem mais de 2000 linhas - precisa ser dividido em componentes
-- **Alta**: backend/server.py precisa ser modularizado em routers separados
+## Credentials
+Veja `/app/memory/test_credentials.md`.
