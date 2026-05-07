@@ -212,7 +212,7 @@ const LoginPage = () => {
         
         {/* Versão */}
         <div className="absolute bottom-4 left-4 text-sm text-muted-foreground">
-          Versão 1.0.0
+          Versão 1.0.1
         </div>
       </div>
     </div>
@@ -882,6 +882,28 @@ const DizimistasPage = () => {
                         required
                       />
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="co_dizimista">Co-Dizimista</Label>
+                        <Input
+                          id="co_dizimista"
+                          data-testid="input-co-dizimista"
+                          value={formData.co_dizimista}
+                          onChange={(e) => setFormData({ ...formData, co_dizimista: e.target.value })}
+                          placeholder="Nome do co-dizimista"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="co_dizimista_aniversario">Aniversário Co-Dizimista</Label>
+                        <Input
+                          id="co_dizimista_aniversario"
+                          data-testid="input-co-dizimista-aniversario"
+                          type="date"
+                          value={formData.co_dizimista_aniversario}
+                          onChange={(e) => setFormData({ ...formData, co_dizimista_aniversario: e.target.value })}
+                        />
+                      </div>
+                    </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="telefone">Celular</Label>
@@ -995,28 +1017,6 @@ const DizimistasPage = () => {
                         </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="co_dizimista">Co-Dizimista</Label>
-                        <Input
-                          id="co_dizimista"
-                          data-testid="input-co-dizimista"
-                          value={formData.co_dizimista}
-                          onChange={(e) => setFormData({ ...formData, co_dizimista: e.target.value })}
-                          placeholder="Nome do co-dizimista"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="co_dizimista_aniversario">Aniversário Co-Dizimista</Label>
-                        <Input
-                          id="co_dizimista_aniversario"
-                          data-testid="input-co-dizimista-aniversario"
-                          type="date"
-                          value={formData.co_dizimista_aniversario}
-                          onChange={(e) => setFormData({ ...formData, co_dizimista_aniversario: e.target.value })}
-                        />
-                      </div>
-                    </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="comunicacao">Comunicação</Label>
@@ -1032,8 +1032,6 @@ const DizimistasPage = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="nota">Nota</Label>
                         <Select value={formData.nota} onValueChange={(v) => setFormData({ ...formData, nota: v })}>
