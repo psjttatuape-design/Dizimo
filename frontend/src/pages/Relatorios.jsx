@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { BarChart3 } from "lucide-react";
+import { toast } from "sonner";
+import { BarChart3, Edit, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -29,8 +34,10 @@ export default function RelatoriosPage() {
   const [filtros, setFiltros] = useState({
     mesInicio: "", anoInicio: "", mesFim: "", anoFim: "", status: "", nota: "",
   });
-  // useAuth hook is invoked to keep the route guarded; permissions are handled in protected route
-  useAuth();
+  const [valorDialogOpen, setValorDialogOpen] = useState(false);
+  const [valorForm, setValorForm] = useState({ mes: "", ano: "", valor: "", observacao: "" });
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const currentYear = new Date().getFullYear();
   const anos = Array.from({ length: 10 }, (_, i) => currentYear - i);
@@ -83,6 +90,49 @@ export default function RelatoriosPage() {
   };
 
   const limparFiltros = () => setFiltros({ mesInicio: "", anoInicio: "", mesFim: "", anoFim: "", status: "", nota: "" });
+
+  const handleSalvarValorMensal = async (e) => {
+    e.preventDefault();
+    if (!valorForm.mes || !valorForm.ano || !valorForm.valor) {
+      toast.error("Preencha mês, ano e valor");
+      return;
+    }
+    try {
+      await axios.post(`${API}/valores-mensais`, {
+        mes: parseInt(valorForm.mes),
+        ano: parseInt(valorForm.ano),
+        valor: parseFloat(valorForm.valor),
+        observacao: valorForm.observacao || "Valor manual",
+      });
+      toast.success("Valor mensal salvo!");
+      setValorDialogOpen(false);
+      setValorForm({ mes: "", ano: "", valor: "", observacao: "" });
+      await fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Erro ao salvar");
+    }
+  };
+
+  const handleExcluirValorMensal = async (id) => {
+    if (!window.confirm("Excluir este valor mensal?")) return;
+    try {
+      await axios.delete(`${API}/valores-mensais/${id}`);
+      toast.success("Valor excluído!");
+      await fetchData();
+    } catch (error) {
+      toast.error("Erro ao excluir");
+    }
+  };
+
+  const editarValorMensal = (v) => {
+    setValorForm({
+      mes: String(v.mes),
+      ano: String(v.ano),
+      valor: String(v.valor),
+      observacao: v.observacao || "",
+    });
+    setValorDialogOpen(true);
+  };
 
   const temFiltrosAtivos = filtros.mesInicio || filtros.anoInicio || filtros.mesFim || filtros.anoFim ||
     (filtros.status && filtros.status !== "todos") || (filtros.nota && filtros.nota !== "todos");
@@ -137,6 +187,75 @@ export default function RelatoriosPage() {
             <h1 className="text-3xl font-bold tracking-tight">Relatórios</h1>
             <p className="text-muted-foreground">Visualize os relatórios de contribuições</p>
           </div>
+          {isAdmin && (
+            <Dialog open={valorDialogOpen} onOpenChange={(open) => {
+              setValorDialogOpen(open);
+              if (!open) setValorForm({ mes: "", ano: "", valor: "", observacao: "" });
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" data-testid="btn-editar-valor-mensal">
+                  <Edit className="w-4 h-4 mr-2" />
+                  Editar Valor Mensal
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Editar Valor Mensal do Relatório</DialogTitle>
+                  <DialogDescription>
+                    Define ou ajusta o total mensal exibido no gráfico (sobrescreve o auto-cálculo).
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSalvarValorMensal} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="vm-mes">Mês *</Label>
+                      <Select value={valorForm.mes} onValueChange={(v) => setValorForm({ ...valorForm, mes: v })}>
+                        <SelectTrigger data-testid="vm-mes"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {MESES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vm-ano">Ano *</Label>
+                      <Select value={valorForm.ano} onValueChange={(v) => setValorForm({ ...valorForm, ano: v })}>
+                        <SelectTrigger data-testid="vm-ano"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vm-valor">Valor (R$) *</Label>
+                    <Input
+                      id="vm-valor"
+                      data-testid="vm-valor"
+                      type="number"
+                      step="0.01"
+                      value={valorForm.valor}
+                      onChange={(e) => setValorForm({ ...valorForm, valor: e.target.value })}
+                      placeholder="0,00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vm-obs">Observação</Label>
+                    <Input
+                      id="vm-obs"
+                      data-testid="vm-obs"
+                      value={valorForm.observacao}
+                      onChange={(e) => setValorForm({ ...valorForm, observacao: e.target.value })}
+                      placeholder="Opcional"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" data-testid="vm-salvar">Salvar</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="bento-grid">
@@ -196,6 +315,50 @@ export default function RelatoriosPage() {
             )}
           </CardContent>
         </Card>
+
+        {isAdmin && (
+          <Card data-testid="card-valores-mensais-admin">
+            <CardHeader>
+              <CardTitle className="text-lg">Valores Mensais Cadastrados</CardTitle>
+              <CardDescription>Edite ou exclua os totais mensais que aparecem no gráfico (admin)</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mês/Ano</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Observação</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {valoresMensais.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">Nenhum valor cadastrado</TableCell></TableRow>
+                  ) : (
+                    [...valoresMensais].sort((a, b) => (b.ano - a.ano) || (b.mes - a.mes)).map(v => (
+                      <TableRow key={v.id} data-testid={`row-valor-${v.id}`}>
+                        <TableCell className="font-medium">{MESES.find(m => m.value === String(v.mes))?.label}/{v.ano}</TableCell>
+                        <TableCell className="font-semibold text-green-600">{formatCurrency(v.valor)}</TableCell>
+                        <TableCell className="text-muted-foreground">{v.observacao || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => editarValorMensal(v)} data-testid={`btn-edit-valor-${v.id}`}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleExcluirValorMensal(v.id)} data-testid={`btn-del-valor-${v.id}`}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
