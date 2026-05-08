@@ -112,7 +112,7 @@ export default function LoginPage() {
         </div>
 
         <div className="absolute bottom-16 right-4 text-sm text-muted-foreground">
-          Versão 1.0.1
+          Versão 1.1
         </div>
       </div>
     </div>
