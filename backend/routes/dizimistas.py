@@ -71,12 +71,23 @@ async def export_dizimistas_excel(
         filtered = []
         for d in dizimistas:
             data_nasc = d.get("data_nascimento") or ""
+            data_co = d.get("co_dizimista_aniversario") or ""
+            matched = False
             try:
                 parts = data_nasc.split("-")
                 if len(parts) >= 2 and int(parts[1]) == mes_aniversario:
-                    filtered.append(d)
+                    matched = True
             except Exception:
                 pass
+            if not matched:
+                try:
+                    parts_co = data_co.split("-")
+                    if len(parts_co) >= 2 and int(parts_co[1]) == mes_aniversario:
+                        matched = True
+                except Exception:
+                    pass
+            if matched:
+                filtered.append(d)
         dizimistas = filtered
 
     output = build_export_workbook(dizimistas)
@@ -122,13 +133,27 @@ async def list_dizimistas(
         filtered = []
         for d in dizimistas:
             data_nasc = d.get("data_nascimento") or ""
+            data_co = d.get("co_dizimista_aniversario") or ""
+            sort_day = 99
+            matched = False
             try:
                 parts = data_nasc.split("-")
                 if len(parts) >= 2 and int(parts[1]) == mes_aniversario:
-                    d["_sort_day"] = int(parts[2]) if len(parts) >= 3 else 0
-                    filtered.append(d)
+                    matched = True
+                    sort_day = int(parts[2]) if len(parts) >= 3 else 0
             except Exception:
                 pass
+            if not matched:
+                try:
+                    parts_co = data_co.split("-")
+                    if len(parts_co) >= 2 and int(parts_co[1]) == mes_aniversario:
+                        matched = True
+                        sort_day = int(parts_co[2]) if len(parts_co) >= 3 else 0
+                except Exception:
+                    pass
+            if matched:
+                d["_sort_day"] = sort_day
+                filtered.append(d)
         filtered.sort(key=lambda x: x.get("_sort_day", 0))
         for d in filtered:
             d.pop("_sort_day", None)
