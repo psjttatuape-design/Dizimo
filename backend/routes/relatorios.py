@@ -60,13 +60,16 @@ async def get_resumo(
     total_arrecadado = total_valor_dizimo + total_contribuicoes + total_valores_mensais
 
     monthly = {}
+    # 1) agregar pelas contribuições individuais
     for c in contribuicoes:
         data = c.get("data", "")[:7]
         if data:
             monthly[data] = monthly.get(data, 0) + c.get("valor", 0)
+    # 2) valores_mensais é a fonte de verdade (auto-sync já inclui as contribuições)
+    #    portanto OVERRIDE — nunca somar para evitar contagem dupla.
     for v in valores_mensais:
         key = f"{v.get('ano')}-{str(v.get('mes')).zfill(2)}"
-        monthly[key] = monthly.get(key, 0) + v.get("valor", 0)
+        monthly[key] = v.get("valor", 0)
 
     return {
         "total_dizimistas": total_geral,
